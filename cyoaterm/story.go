@@ -38,7 +38,6 @@ func (s Story) PrintArcTitles() {
 
 func StoryRepl(s Story, t *template.Template, chapter string) {
 	if chapter == "home" {
-		fmt.Println("we're going home")
 		execTemplate(s, t, chapter)
 		os.Exit(0)
 	}
