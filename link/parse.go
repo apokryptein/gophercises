@@ -1,7 +1,6 @@
 package link
 
 import (
-	"fmt"
 	"io"
 	"log"
 
@@ -13,32 +12,45 @@ type Link struct {
 	Text string
 }
 
-var r io.Reader
-
+// var r io.Reader
 func Parse(r io.Reader) ([]Link, error) {
 	doc, err := html.Parse(r)
 	if err != nil {
 		log.Fatalf("link: issue parsing html string from new reader: %v", err)
 	}
 
-	parseNodeTree(doc)
+	linkNodes := parseNodeTree(doc)
 
-	return nil, nil
+	var links []Link
+	for _, n := range linkNodes {
+		links = append(links, createLink(n))
+	}
+	return links, nil
 }
 
+// TODO: add parsing of <a> element text
 // Reference: https://pkg.go.dev/golang.org/x/net/html#Parse
-func parseNodeTree(n *html.Node) ([]Link, error) {
+func parseNodeTree(n *html.Node) []*html.Node {
 	if n.Type == html.ElementNode && n.Data == "a" {
-		for _, a := range n.Attr {
-			if a.Key == "href" {
-				fmt.Println(a.Val, a.Namespace)
-				break
-			}
-		}
+		// fmt.Println(a.Val, a.Namespace)
+		return []*html.Node{n}
 	}
 
+	var ret []*html.Node
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		parseNodeTree(c)
+		ret = append(ret, parseNodeTree(c)...)
 	}
-	return nil, nil
+	return ret
+}
+
+// creates a Link struct from a given node
+func createLink(n *html.Node) Link {
+	var l Link
+	for _, attr := range n.Attr {
+		if attr.Key == "href" {
+			l.Href = attr.Val
+			break
+		}
+	}
+	return l
 }
