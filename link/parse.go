@@ -3,6 +3,7 @@ package link
 import (
 	"io"
 	"log"
+	"strings"
 
 	"golang.org/x/net/html"
 )
@@ -52,5 +53,27 @@ func createLink(n *html.Node) Link {
 			break
 		}
 	}
+	l.Text = formatText(retrieveText(n))
 	return l
+}
+
+func retrieveText(n *html.Node) string {
+	if n.Type == html.TextNode {
+		return n.Data
+	}
+
+	if n.Type != html.ElementNode {
+		return ""
+	}
+
+	var ret string
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		ret += retrieveText(c) + " "
+	}
+	return ret
+}
+
+func formatText(s string) string {
+	sl := strings.Fields(s)
+	return strings.Join(sl, " ")
 }
