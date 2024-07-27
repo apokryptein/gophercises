@@ -1,0 +1,4 @@
+github.com/apokryptein/gophercises/link v0.0.0-20240727013011-4535f66b68c9 h1:vFsyTlD2pdO8H3Z1TiWi0X6NdE03PBEzc0rD/f2x2hU=
+github.com/apokryptein/gophercises/link v0.0.0-20240727013011-4535f66b68c9/go.mod h1:d7Vkn9oWDAios+oYkLGiAN4mWuMbCwvRydCjWiDs4oA=
+golang.org/x/net v0.27.0 h1:5K3Njcw06/l2y9vpGCSdcxWOYHOUk3dVNGDXN+FvAys=
+golang.org/x/net v0.27.0/go.mod h1:dDi0PyhWNoiUOrAS8uXv/vnScO4wnHQO4mj9fn/RytE=
