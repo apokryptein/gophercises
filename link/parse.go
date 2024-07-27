@@ -29,8 +29,8 @@ func Parse(r io.Reader) ([]Link, error) {
 	return links, nil
 }
 
-// TODO: add parsing of <a> element text
 // Reference: https://pkg.go.dev/golang.org/x/net/html#Parse
+// Implements Depth First Search (DFS) algorithm
 func parseNodeTree(n *html.Node) []*html.Node {
 	if n.Type == html.ElementNode && n.Data == "a" {
 		// fmt.Println(a.Val, a.Namespace)

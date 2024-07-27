@@ -30,9 +30,6 @@ func main() {
 	// Call function to parse Node Tree
 	links, _ := link.Parse(strings.NewReader(string(h)))
 
-	// links will be nil for now until
-	// we get the functionality in link.Parse
-	// working and returning a []Link
 	for _, link := range links {
 		fmt.Printf("HREF: %s\tTEXT: %s\n", link.Href, link.Text)
 	}
