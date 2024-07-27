@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"link"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/apokryptein/gophercises/link"
 )
 
 func main() {
