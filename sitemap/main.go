@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"net/http"
@@ -9,12 +10,23 @@ import (
 	"github.com/apokryptein/gophercises/link"
 )
 
+type Url struct {
+	Loc string `xml:"loc"`
+}
+
+type UrlSet struct {
+	XMLName xml.Name `xml:"urlset"`
+	Xmlns   string   `xml:"xmlns,attr"`
+	Urls    []Url    `xml:"url"`
+}
+
+// TODO: now that it's functional, refactor this mess
 func main() {
-	fmt.Println("Sitemap Utility")
-	site := flag.String("site", "", "site to crawl and map")
+	site := flag.String("s", "", "site to crawl and map")
+	outFile := flag.String("o", "sitemap.xml", "desired XML filename for output")
 	flag.Parse()
 
-	if !isFlagPassed("site") {
+	if !isFlagPassed("s") {
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -36,8 +48,27 @@ func main() {
 
 	links, _ := link.Parse(h)
 
-	for _, link := range links {
-		fmt.Println(link.Href, link.Text)
+	w, err := os.Create(*outFile)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "sitemap: error creating file: %v", err)
+		os.Exit(1)
+	}
+
+	urls := make([]Url, len(links))
+
+	for i, link := range links {
+		urls[i] = Url{Loc: link.Href}
+	}
+
+	uset := UrlSet{Xmlns: "http://www.sitemaps.org/schemas/sitemap/0.9", Urls: urls}
+
+	fmt.Printf("[i] Writing results to: %s\n", *outFile)
+	w.WriteString(xml.Header)
+	enc := xml.NewEncoder(w)
+	enc.Indent("", "    ")
+	if err := enc.Encode(uset); err != nil {
+		fmt.Fprintf(os.Stderr, "sitemap: error encoding XML: %v", err)
+		os.Exit(1)
 	}
 }
 
