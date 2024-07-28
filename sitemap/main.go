@@ -49,6 +49,10 @@ func main() {
 
 	h := resp.Body
 
+	// TODO: this currently contains links for the main page supplied.
+	// If I want to crawl and collect links for all pages on the site,
+	// I will need to create a map[string][]Link,
+	// which will map the current page to links discovered
 	links, _ := link.Parse(h)
 
 	w, err := os.Create(*outFile)
