@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/apokryptein/gophercises/link"
 )
@@ -33,6 +34,7 @@ func main() {
 
 	fmt.Println("You have chosen to map: ", *site)
 
+	validateSite(site)
 	resp, err := http.Get(*site)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "sitemap: error making get request: %v", err)
@@ -80,4 +82,18 @@ func isFlagPassed(name string) bool {
 		}
 	})
 	return found
+}
+
+func validateSite(s *string) {
+	if strings.HasPrefix(*s, "https://") {
+		return
+	} else if strings.HasPrefix(*s, "http://") {
+		n := strings.Replace(*s, "http:", "https:", 1)
+		fmt.Println("[!] HTTP not supported. Updating to HTTPS.")
+		*s = n
+		return
+	}
+
+	*s = "https://" + *s
+	fmt.Printf("[i] URL updated: %s/n", *s)
 }
