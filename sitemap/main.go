@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -56,11 +57,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	urls := make([]Url, len(links))
-
-	for i, link := range links {
-		urls[i] = Url{Loc: link.Href}
-	}
+	urls := makeUrlSlice(links, *site)
 
 	uset := UrlSet{Xmlns: "http://www.sitemaps.org/schemas/sitemap/0.9", Urls: urls}
 
@@ -96,4 +93,37 @@ func validateSite(s *string) {
 
 	*s = "https://" + *s
 	fmt.Printf("[i] URL updated: %s/n", *s)
+}
+
+// TODO: make this more modular
+func makeUrlSlice(l []link.Link, s string) []Url {
+	ou, err := url.Parse(s)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "sitemap: error parsing URL: %v", err)
+		os.Exit(1)
+	}
+	parts := strings.Split(ou.Hostname(), ".")
+	origDomain := parts[len(parts)-2]
+
+	urls := make([]Url, 0, len(l))
+
+	for _, link := range l {
+		cu, err := url.Parse(link.Href)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "sitemap: error parsing URL: %v", err)
+			os.Exit(1)
+		}
+
+		if cu.Scheme != "" {
+			cparts := strings.Split(cu.Hostname(), ".")
+			currDomain := cparts[len(cparts)-2]
+			if currDomain != origDomain {
+				continue
+			}
+		}
+		if link.Href != "" {
+			urls = append(urls, Url{Loc: link.Href})
+		}
+	}
+	return urls
 }
