@@ -129,7 +129,9 @@ func makeMapOfSite(seed []link.Link, site string, depth int) map[int][]link.Link
 	for i := range depth {
 		for _, link := range seed {
 			url := makeUrl(link.Href, site)
-			sitemap[i] = append(sitemap[i], fetchLinks(url)...)
+			links := fetchLinks(url)
+			updatedLinks := updateUrls(links, site)
+			sitemap[i] = append(sitemap[i], updatedLinks...)
 		}
 	}
 	return sitemap
@@ -195,10 +197,25 @@ func makeUrl(currentLink string, domain string) string {
 
 	if url.Scheme == "" {
 		d, _ := url.Parse(domain)
-		new := "https://" + d.Host + currentLink
-		return new
+		if strings.Contains(currentLink, "#") {
+			return "https://" + d.Host + "/" + currentLink
+		}
+		return "https://" + d.Host + currentLink
 	}
+
 	return currentLink
+}
+
+func updateUrls(links []link.Link, domain string) []link.Link {
+	updatedLinks := make([]link.Link, 0, len(links))
+	for _, l := range links {
+		ul := makeUrl(l.Href, domain)
+		if !isLinkInScope(ul, domain) {
+			continue
+		}
+		updatedLinks = append(updatedLinks, link.Link{Href: ul, Text: l.Text})
+	}
+	return updatedLinks
 }
 
 // Helper function to print sitemap results
@@ -209,4 +226,11 @@ func printSiteMap(sm map[int][]link.Link) {
 			fmt.Println(link.Href)
 		}
 	}
+}
+
+func isLinkInScope(l string, s string) bool {
+	ls := getDomain(l)
+	ss := getDomain(s)
+
+	return ls == ss
 }
