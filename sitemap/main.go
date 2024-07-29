@@ -44,15 +44,13 @@ func main() {
 	sitemap := makeMapOfSite(links, *site, *depth)
 	printSiteMap(sitemap)
 
-	// TODO: new functionality ends 2 lines above
-	// Incorporate with XML output functionality
 	w, err := os.Create(*outFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "sitemap: error creating file: %v", err)
 		os.Exit(1)
 	}
 
-	urls := makeUrlSlice(links, *site)
+	urls := makeUrlSlice(sitemap)
 
 	uset := UrlSet{Xmlns: "http://www.sitemaps.org/schemas/sitemap/0.9", Urls: urls}
 
@@ -95,28 +93,14 @@ func validateSite(s *string) {
 
 // Parse slice of Link into slice of Url
 // for XML marshaling
-func makeUrlSlice(l []link.Link, s string) []Url {
-	origDomain := getDomain(s)
+func makeUrlSlice(sm map[int][]link.Link) []Url {
+	// origDomain := getDomain(s)
 
-	urls := make([]Url, 0, len(l))
+	urls := make([]Url, 0, getMapSize((sm)))
 
-	for _, link := range l {
-		// we have to parse this here to get Scheme
-		cu, err := url.Parse(link.Href)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "sitemap: error parsing URL: %v", err)
-			os.Exit(1)
-		}
-
-		if cu.Scheme != "" {
-			cparts := strings.Split(cu.Hostname(), ".")
-			currDomain := cparts[len(cparts)-2]
-			if currDomain != origDomain {
-				continue
-			}
-		}
-		if link.Href != "" {
-			urls = append(urls, Url{Loc: link.Href})
+	for _, l := range sm {
+		for _, u := range l {
+			urls = append(urls, Url{u.Href})
 		}
 	}
 	return urls
@@ -197,7 +181,7 @@ func makeUrl(currentLink string, domain string) string {
 
 	if url.Scheme == "" {
 		d, _ := url.Parse(domain)
-		if strings.Contains(currentLink, "#") {
+		if strings.HasPrefix(currentLink, "#") {
 			return "https://" + d.Host + "/" + currentLink
 		}
 		return "https://" + d.Host + currentLink
@@ -233,4 +217,14 @@ func isLinkInScope(l string, s string) bool {
 	ss := getDomain(s)
 
 	return ls == ss
+}
+
+func getMapSize(m map[int][]link.Link) int {
+	size := 0
+
+	for _, v := range m {
+		size += len(v)
+	}
+
+	return size
 }
