@@ -22,6 +22,7 @@ type UrlSet struct {
 	Urls    []Url    `xml:"url"`
 }
 
+// TODO: Add functionality to skip already seen links in sitemap data structure
 // TODO: REFACTOR
 func main() {
 	site := flag.String("s", "", "site to crawl and map")
