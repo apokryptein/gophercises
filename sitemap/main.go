@@ -190,6 +190,7 @@ func makeUrl(currentLink string, domain string) string {
 	return currentLink
 }
 
+// Function to update all URLs in a given []link.Link
 func updateUrls(links []link.Link, domain string) []link.Link {
 	updatedLinks := make([]link.Link, 0, len(links))
 	for _, l := range links {
@@ -212,6 +213,7 @@ func printSiteMap(sm map[int][]link.Link) {
 	}
 }
 
+// Determines whether link is in scope
 func isLinkInScope(l string, s string) bool {
 	ls := getDomain(l)
 	ss := getDomain(s)
@@ -219,6 +221,7 @@ func isLinkInScope(l string, s string) bool {
 	return ls == ss
 }
 
+// Returns number of elements in map[int][]link.Link
 func getMapSize(m map[int][]link.Link) int {
 	size := 0
 
