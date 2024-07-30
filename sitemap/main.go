@@ -110,13 +110,19 @@ func makeUrlSlice(sm map[int][]link.Link) []Url {
 // Function to map a given website at the specified depth
 func makeMapOfSite(seed []link.Link, site string, depth int) map[int][]link.Link {
 	sitemap := make(map[int][]link.Link)
+	visited := make(map[string]struct{})
+	// TODO: add queue, visited not currently fully functional for BFS
 
 	for i := range depth {
 		for _, link := range seed {
 			url := makeUrl(link.Href, site)
+			if _, ok := visited[url]; ok {
+				continue
+			}
 			links := fetchLinks(url)
 			updatedLinks := updateUrls(links, site)
 			sitemap[i] = append(sitemap[i], updatedLinks...)
+			visited[url] = struct{}{}
 		}
 	}
 	return sitemap
@@ -156,6 +162,7 @@ func fetchLinks(s string) []link.Link {
 		fmt.Fprintf(os.Stderr, "sitemap: error making get request: %v", err)
 		os.Exit(1)
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		fmt.Fprintf(os.Stderr, "sitemap: status not 200")
