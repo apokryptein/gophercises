@@ -40,7 +40,9 @@ func main() {
 	// validate user input contains Scheme -> http/s
 	validateSite(site)
 
-	links := fetchLinks(*site)
+	// TODO: is fetch the best option here? link.Parse() takes an io.Reader
+	// and resp.Body is a valid Reader
+	links := fetch(*site)
 
 	sitemap := makeMapOfSite(links, *site, *depth)
 	printSiteMap(sitemap)
@@ -77,6 +79,7 @@ func isFlagPassed(name string) bool {
 	return found
 }
 
+// TODO: get rid of this?
 // Test user input to ensure Scheme is present
 func validateSite(s *string) {
 	if strings.HasPrefix(*s, "https://") {
@@ -119,7 +122,7 @@ func makeMapOfSite(seed []link.Link, site string, depth int) map[int][]link.Link
 			if _, ok := visited[url]; ok {
 				continue
 			}
-			links := fetchLinks(url)
+			links := fetch(url)
 			updatedLinks := updateUrls(links, site)
 			sitemap[i] = append(sitemap[i], updatedLinks...)
 			visited[url] = struct{}{}
@@ -156,7 +159,7 @@ func getDomain(s string) string {
 }
 
 // Function to fetch links in a given page
-func fetchLinks(s string) []link.Link {
+func fetch(s string) []link.Link {
 	resp, err := http.Get(s)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "sitemap: error making get request: %v", err)
@@ -197,6 +200,18 @@ func makeUrl(currentLink string, domain string) string {
 
 	return currentLink
 }
+
+/*
+func makeUrl(resp *http.Response) string {
+	reqUrl := resp.Request.URL
+	baseUrl := &url.URL{
+		Scheme: reqUrl.Scheme,
+		Host:   reqUrl.Host,
+	}
+
+	return baseUrl.String()
+}
+*/
 
 // Function to update all URLs in a given []link.Link
 func updateUrls(links []link.Link, domain string) []link.Link {
