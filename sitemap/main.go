@@ -131,6 +131,7 @@ func makeMapOfSite(seed []link.Link, site string, depth int) map[int][]link.Link
 	return sitemap
 }
 
+// TODO: get rid of this
 // Returns path of given URL
 func getPath(site string) string {
 	url, err := url.Parse(site)
@@ -142,6 +143,7 @@ func getPath(site string) string {
 	return path
 }
 
+// TODO: get rid of this
 // Return domain name of given URL
 // For example: https://www.google.com returns -> "google"
 // Used to test domain name to remain in crawl scope
