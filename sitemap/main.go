@@ -110,7 +110,6 @@ func makeMapOfSite(seed []string, depth int) map[int][]string {
 
 	for i := range depth {
 		for _, l := range seed {
-			// url := makeUrl(link.Href)
 			if _, ok := visited[l]; ok {
 				continue
 			}
@@ -138,10 +137,10 @@ func fetch(s string) []string {
 		os.Exit(1)
 	}
 
-	return makeUrl(resp)
+	return parseUrls(resp)
 }
 
-func makeUrl(resp *http.Response) []string {
+func parseUrls(resp *http.Response) []string {
 	reqUrl := resp.Request.URL
 	baseUrl := &url.URL{
 		Scheme: reqUrl.Scheme,
