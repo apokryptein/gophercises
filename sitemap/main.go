@@ -38,14 +38,14 @@ func main() {
 	fmt.Println("You have chosen to map: ", *site)
 
 	// validate user input contains Scheme -> http/s
-	validateSite(site)
+	validateInput(site)
 
-	// TODO: is fetch the best option here? link.Parse() takes an io.Reader
-	// and resp.Body is a valid Reader
+	// TODO: address case where depth is 1
+	// currently minimum is set to 2 due to fetch prior
+	// to pass to makeMapOfSite
 	links := fetch(*site)
 
-	sitemap := makeMapOfSite(links, *site, *depth)
-	printSiteMap(sitemap)
+	sitemap := makeMapOfSite(links, *depth)
 
 	w, err := os.Create(*outFile)
 	if err != nil {
@@ -81,87 +81,51 @@ func isFlagPassed(name string) bool {
 
 // TODO: get rid of this?
 // Test user input to ensure Scheme is present
-func validateSite(s *string) {
-	if strings.HasPrefix(*s, "https://") {
-		return
-	} else if strings.HasPrefix(*s, "http://") {
-		n := strings.Replace(*s, "http:", "https:", 1)
-		fmt.Println("[!] HTTP not supported. Updating to HTTPS.")
-		*s = n
+func validateInput(s *string) {
+	if strings.HasPrefix(*s, "https:") {
 		return
 	}
-
-	*s = "https://" + *s
-	fmt.Printf("[i] URL updated: %s/n", *s)
+	fmt.Fprintf(os.Stderr, "sitemap: please supply full domain with scheme")
+	os.Exit(1)
 }
 
 // Parse slice of Link into slice of Url
 // for XML marshaling
-func makeUrlSlice(sm map[int][]link.Link) []Url {
-	// origDomain := getDomain(s)
-
+func makeUrlSlice(sm map[int][]string) []Url {
 	urls := make([]Url, 0, getMapSize((sm)))
 
 	for _, l := range sm {
 		for _, u := range l {
-			urls = append(urls, Url{u.Href})
+			urls = append(urls, Url{u})
 		}
 	}
 	return urls
 }
 
 // Function to map a given website at the specified depth
-func makeMapOfSite(seed []link.Link, site string, depth int) map[int][]link.Link {
-	sitemap := make(map[int][]link.Link)
+func makeMapOfSite(seed []string, depth int) map[int][]string {
+	sitemap := make(map[int][]string)
 	visited := make(map[string]struct{})
 	// TODO: add queue, visited not currently fully functional for BFS
 
 	for i := range depth {
-		for _, link := range seed {
-			url := makeUrl(link.Href, site)
-			if _, ok := visited[url]; ok {
+		for _, l := range seed {
+			// url := makeUrl(link.Href)
+			if _, ok := visited[l]; ok {
 				continue
 			}
-			links := fetch(url)
-			updatedLinks := updateUrls(links, site)
-			sitemap[i] = append(sitemap[i], updatedLinks...)
-			visited[url] = struct{}{}
+			links := fetch(l)
+			// updatedLinks := updateUrls(links, site)
+			// sitemap[i] = append(sitemap[i], updatedLinks...)
+			sitemap[i] = append(sitemap[i], links...)
+			visited[l] = struct{}{}
 		}
 	}
 	return sitemap
 }
 
-// TODO: get rid of this
-// Returns path of given URL
-func getPath(site string) string {
-	url, err := url.Parse(site)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "sitemap: error parsing URL: %v", err)
-	}
-
-	path := url.Path
-	return path
-}
-
-// TODO: get rid of this
-// Return domain name of given URL
-// For example: https://www.google.com returns -> "google"
-// Used to test domain name to remain in crawl scope
-func getDomain(s string) string {
-	u, err := url.Parse(s)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "sitemap: error parsing URL: %v", err)
-		os.Exit(1)
-	}
-
-	url := strings.Split(u.Hostname(), ".")
-	domain := url[len(url)-2]
-
-	return domain
-}
-
 // Function to fetch links in a given page
-func fetch(s string) []link.Link {
+func fetch(s string) []string {
 	resp, err := http.Get(s)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "sitemap: error making get request: %v", err)
@@ -174,80 +138,51 @@ func fetch(s string) []link.Link {
 		os.Exit(1)
 	}
 
-	h := resp.Body
-
-	links, err := link.Parse(h)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "sitemap: error parsing links: %v", err)
-		os.Exit(1)
-	}
-	return links
+	return makeUrl(resp)
 }
 
-// Function to return an Absolute URL for a given input
-func makeUrl(currentLink string, domain string) string {
-	url, err := url.Parse(currentLink)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "sitemap: error parsing url: %v", err)
-		os.Exit(1)
-	}
-
-	if url.Scheme == "" {
-		d, _ := url.Parse(domain)
-		if strings.HasPrefix(currentLink, "#") {
-			return "https://" + d.Host + "/" + currentLink
-		}
-		return "https://" + d.Host + currentLink
-	}
-
-	return currentLink
-}
-
-/*
-func makeUrl(resp *http.Response) string {
+func makeUrl(resp *http.Response) []string {
 	reqUrl := resp.Request.URL
 	baseUrl := &url.URL{
 		Scheme: reqUrl.Scheme,
 		Host:   reqUrl.Host,
 	}
+	base := baseUrl.String()
 
-	return baseUrl.String()
-}
-*/
+	r := resp.Body
 
-// Function to update all URLs in a given []link.Link
-func updateUrls(links []link.Link, domain string) []link.Link {
-	updatedLinks := make([]link.Link, 0, len(links))
+	links, err := link.Parse(r)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "sitemap: error parsing links: %v", err)
+		os.Exit(1)
+	}
+
+	var urls []string
 	for _, l := range links {
-		ul := makeUrl(l.Href, domain)
-		if !isLinkInScope(ul, domain) {
-			continue
-		}
-		updatedLinks = append(updatedLinks, link.Link{Href: ul, Text: l.Text})
-	}
-	return updatedLinks
-}
-
-// Helper function to print sitemap results
-func printSiteMap(sm map[int][]link.Link) {
-	fmt.Printf("DEPTH: %d\n", len(sm))
-	for _, i := range sm {
-		for _, link := range i {
-			fmt.Println(link.Href)
+		if strings.HasPrefix(l.Href, "/") {
+			urls = append(urls, base+l.Href)
+		} else if strings.HasPrefix(l.Href, "#") {
+			urls = append(urls, base+"/"+l.Href)
+		} else if strings.HasPrefix(l.Href, "http") {
+			urls = append(urls, l.Href)
 		}
 	}
+	return filterScope(urls, base)
 }
 
-// Determines whether link is in scope
-func isLinkInScope(l string, s string) bool {
-	ls := getDomain(l)
-	ss := getDomain(s)
-
-	return ls == ss
+// filters URLs to scope to site
+func filterScope(links []string, base string) []string {
+	var filtered []string
+	for _, l := range links {
+		if strings.HasPrefix(l, base) {
+			filtered = append(filtered, l)
+		}
+	}
+	return filtered
 }
 
 // Returns number of elements in map[int][]link.Link
-func getMapSize(m map[int][]link.Link) int {
+func getMapSize(m map[int][]string) int {
 	size := 0
 
 	for _, v := range m {
