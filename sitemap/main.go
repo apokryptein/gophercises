@@ -158,11 +158,12 @@ func parseUrls(resp *http.Response) []string {
 
 	var urls []string
 	for _, l := range links {
-		if strings.HasPrefix(l.Href, "/") {
+		switch {
+		case strings.HasPrefix(l.Href, "/"):
 			urls = append(urls, base+l.Href)
-		} else if strings.HasPrefix(l.Href, "#") {
+		case strings.HasPrefix(l.Href, "#"):
 			urls = append(urls, base+"/"+l.Href)
-		} else if strings.HasPrefix(l.Href, "http") {
+		case strings.HasPrefix(l.Href, "http"):
 			urls = append(urls, l.Href)
 		}
 	}
