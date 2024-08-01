@@ -39,10 +39,7 @@ func main() {
 
 	validateInput(site)
 
-	// TODO: address case where depth is 1
-	links := fetch(*site)
-
-	sitemap := makeMapOfSite(links, *depth)
+	sitemap := makeMapOfSite(*site, *depth)
 
 	w, err := os.Create(*outFile)
 	if err != nil {
@@ -85,31 +82,41 @@ func validateInput(s *string) {
 }
 
 // Parse slice of string into slice of Url XML marshaling
-func makeUrlSlice(sm map[int][]string) []Url {
+func makeUrlSlice(sm []string) []Url {
 	urls := make([]Url, 0)
 	for _, l := range sm {
-		for _, u := range l {
-			urls = append(urls, Url{u})
-		}
+		urls = append(urls, Url{l})
 	}
 	return urls
 }
 
 // Function to map a given website at the specified depth
-func makeMapOfSite(seed []string, depth int) map[int][]string {
-	sitemap := make(map[int][]string)
+func makeMapOfSite(seed string, depth int) []string {
+	// tracks visited sites
 	visited := make(map[string]struct{})
-	// TODO: add queue, not currently fully functional for BFS
 
-	for i := range depth {
-		for _, l := range seed {
+	var next map[string]struct{}
+	queue := map[string]struct{}{
+		seed: {},
+	}
+
+	for i := 0; i <= depth; i++ {
+		next = make(map[string]struct{})
+		for l := range queue {
 			if _, ok := visited[l]; ok {
 				continue
 			}
-			links := fetch(l)
-			sitemap[i] = append(sitemap[i], links...)
 			visited[l] = struct{}{}
+			for _, link := range fetch(l) {
+				next[link] = struct{}{}
+			}
 		}
+		queue = next
+	}
+
+	sitemap := make([]string, 0, len(visited))
+	for l := range visited {
+		sitemap = append(sitemap, l)
 	}
 	return sitemap
 }
