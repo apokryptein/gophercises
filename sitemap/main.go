@@ -22,7 +22,6 @@ type UrlSet struct {
 	Urls    []Url    `xml:"url"`
 }
 
-// TODO: Add functionality to skip already seen links in sitemap data structure
 // TODO: REFACTOR
 func main() {
 	site := flag.String("s", "", "site to crawl and map")
@@ -61,7 +60,7 @@ func main() {
 	}
 }
 
-// Function to determine whether flag was passed
+// Determine whether flag was passed
 func isFlagPassed(name string) bool {
 	found := false
 	flag.Visit(func(f *flag.Flag) {
@@ -72,7 +71,7 @@ func isFlagPassed(name string) bool {
 	return found
 }
 
-// validate user input contains Scheme -> http/s
+// Validate user input contains Scheme -> http/s
 func validateInput(s *string) {
 	if strings.HasPrefix(*s, "https:") {
 		return
@@ -90,7 +89,7 @@ func makeUrlSlice(sm []string) []Url {
 	return urls
 }
 
-// Function to map a given website at the specified depth
+// Map a given website at the specified depth
 func makeMapOfSite(seed string, depth int) []string {
 	// tracks visited sites
 	visited := make(map[string]struct{})
@@ -121,7 +120,7 @@ func makeMapOfSite(seed string, depth int) []string {
 	return sitemap
 }
 
-// Function to fetch links in a given page
+// Fetch links in a given page
 func fetch(s string) []string {
 	resp, err := http.Get(s)
 	if err != nil {
@@ -138,6 +137,7 @@ func fetch(s string) []string {
 	return parseUrls(resp)
 }
 
+// Fetch and parse links returning a []string of absolute URLs
 func parseUrls(resp *http.Response) []string {
 	reqUrl := resp.Request.URL
 	baseUrl := &url.URL{
@@ -168,7 +168,7 @@ func parseUrls(resp *http.Response) []string {
 	return filterScope(urls, base)
 }
 
-// filters URLs to scope
+// Filters URLs to scope
 func filterScope(links []string, base string) []string {
 	var filtered []string
 	for _, l := range links {
