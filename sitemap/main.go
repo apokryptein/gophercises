@@ -92,8 +92,7 @@ func validateInput(s *string) {
 // Parse slice of Link into slice of Url
 // for XML marshaling
 func makeUrlSlice(sm map[int][]string) []Url {
-	urls := make([]Url, 0, getMapSize((sm)))
-
+	urls := make([]Url, 0)
 	for _, l := range sm {
 		for _, u := range l {
 			urls = append(urls, Url{u})
@@ -106,7 +105,7 @@ func makeUrlSlice(sm map[int][]string) []Url {
 func makeMapOfSite(seed []string, depth int) map[int][]string {
 	sitemap := make(map[int][]string)
 	visited := make(map[string]struct{})
-	// TODO: add queue, visited not currently fully functional for BFS
+	// TODO: add queue, not currently fully functional for BFS
 
 	for i := range depth {
 		for _, l := range seed {
@@ -114,8 +113,6 @@ func makeMapOfSite(seed []string, depth int) map[int][]string {
 				continue
 			}
 			links := fetch(l)
-			// updatedLinks := updateUrls(links, site)
-			// sitemap[i] = append(sitemap[i], updatedLinks...)
 			sitemap[i] = append(sitemap[i], links...)
 			visited[l] = struct{}{}
 		}
@@ -179,15 +176,4 @@ func filterScope(links []string, base string) []string {
 		}
 	}
 	return filtered
-}
-
-// Returns number of elements in map[int][]link.Link
-func getMapSize(m map[int][]string) int {
-	size := 0
-
-	for _, v := range m {
-		size += len(v)
-	}
-
-	return size
 }
