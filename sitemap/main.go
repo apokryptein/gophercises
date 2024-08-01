@@ -161,7 +161,7 @@ func parseUrls(resp *http.Response) []string {
 	return filterScope(urls, base)
 }
 
-// filters URLs to scope to site
+// filters URLs to scope
 func filterScope(links []string, base string) []string {
 	var filtered []string
 	for _, l := range links {
