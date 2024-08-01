@@ -37,12 +37,9 @@ func main() {
 
 	fmt.Println("You have chosen to map: ", *site)
 
-	// validate user input contains Scheme -> http/s
 	validateInput(site)
 
 	// TODO: address case where depth is 1
-	// currently minimum is set to 2 due to fetch prior
-	// to pass to makeMapOfSite
 	links := fetch(*site)
 
 	sitemap := makeMapOfSite(links, *depth)
@@ -68,7 +65,6 @@ func main() {
 }
 
 // Function to determine whether flag was passed
-// on command line
 func isFlagPassed(name string) bool {
 	found := false
 	flag.Visit(func(f *flag.Flag) {
@@ -79,8 +75,7 @@ func isFlagPassed(name string) bool {
 	return found
 }
 
-// TODO: get rid of this?
-// Test user input to ensure Scheme is present
+// validate user input contains Scheme -> http/s
 func validateInput(s *string) {
 	if strings.HasPrefix(*s, "https:") {
 		return
@@ -89,8 +84,7 @@ func validateInput(s *string) {
 	os.Exit(1)
 }
 
-// Parse slice of Link into slice of Url
-// for XML marshaling
+// Parse slice of string into slice of Url XML marshaling
 func makeUrlSlice(sm map[int][]string) []Url {
 	urls := make([]Url, 0)
 	for _, l := range sm {
