@@ -110,16 +110,20 @@ func makeMapOfSite(seed string, depth int) []string {
 	for i := 0; i <= depth; i++ {
 		next = make(map[string]struct{})
 		for l := range queue {
+			// if site in visited, skip and continue
 			if _, ok := visited[l]; ok {
 				continue
 			}
 			visited[l] = struct{}{}
 			for _, link := range fetch(l) {
+				// if link hasn't been visited add to next queue
+				// otherwise continue
 				if _, ok := visited[link]; !ok {
 					next[link] = struct{}{}
 				}
 			}
 		}
+		// queue is next queue for next iteration
 		queue = next
 	}
 
@@ -147,6 +151,7 @@ func fetch(s string) []string {
 	return parseUrls(resp)
 }
 
+// TODO: Possibly drop URLs containing '#'
 // Fetch and parse links returning a []string of absolute URLs
 func parseUrls(resp *http.Response) []string {
 	reqUrl := resp.Request.URL
