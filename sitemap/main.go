@@ -101,6 +101,7 @@ func makeMapOfSite(seed string, depth int) []string {
 	// tracks visited sites
 	visited := make(map[string]struct{})
 
+	// current and next queues
 	var next map[string]struct{}
 	queue := map[string]struct{}{
 		seed: {},
@@ -114,7 +115,9 @@ func makeMapOfSite(seed string, depth int) []string {
 			}
 			visited[l] = struct{}{}
 			for _, link := range fetch(l) {
-				next[link] = struct{}{}
+				if _, ok := visited[link]; !ok {
+					next[link] = struct{}{}
+				}
 			}
 		}
 		queue = next
