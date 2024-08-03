@@ -22,7 +22,6 @@ type UrlSet struct {
 	Urls    []Url    `xml:"url"`
 }
 
-// TODO: REFACTOR
 func main() {
 	site := flag.String("s", "", "site to crawl and map")
 	outFile := flag.String("o", "sitemap.xml", "desired XML filename for output")
@@ -34,23 +33,30 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("You have chosen to map: ", *site)
-
+	// Valide user input: site flag
 	validateInput(site)
 
+	// map the provided site
 	sitemap := makeMapOfSite(*site, *depth)
 
+	// create file for XML output -> io.Writer
 	w, err := os.Create(*outFile)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "sitemap: error creating file: %v", err)
 		os.Exit(1)
 	}
 
+	// parse sitemap data into Url and UrlSet structs
+	// for XML marshaling
 	urls := makeUrlSlice(sitemap)
-
-	uset := UrlSet{Xmlns: "http://www.sitemaps.org/schemas/sitemap/0.9", Urls: urls}
+	uset := UrlSet{
+		Xmlns: "http://www.sitemaps.org/schemas/sitemap/0.9",
+		Urls:  urls,
+	}
 
 	fmt.Printf("[i] Writing results to: %s\n", *outFile)
+
+	// encode and write to file usign io.Writer
 	w.WriteString(xml.Header)
 	enc := xml.NewEncoder(w)
 	enc.Indent("", "    ")
@@ -90,6 +96,7 @@ func makeUrlSlice(sm []string) []Url {
 }
 
 // Map a given website at the specified depth
+// Breadth-First Search (BFS) algorithm
 func makeMapOfSite(seed string, depth int) []string {
 	// tracks visited sites
 	visited := make(map[string]struct{})
