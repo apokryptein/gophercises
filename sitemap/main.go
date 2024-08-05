@@ -151,7 +151,6 @@ func fetch(s string) []string {
 	return parseUrls(resp)
 }
 
-// TODO: Possibly drop URLs containing '#'
 // Fetch and parse links returning a []string of absolute URLs
 func parseUrls(resp *http.Response) []string {
 	reqUrl := resp.Request.URL
@@ -174,8 +173,9 @@ func parseUrls(resp *http.Response) []string {
 		switch {
 		case strings.HasPrefix(l.Href, "/"):
 			urls = append(urls, base+l.Href)
-		case strings.HasPrefix(l.Href, "#"):
-			urls = append(urls, base+"/"+l.Href)
+		// case strings.HasPrefix(l.Href, "#"):
+		// urls = append(urls, base+"/"+l.Href)
+		// choice to drop URLs containing fragment identifier
 		case strings.HasPrefix(l.Href, "http"):
 			urls = append(urls, l.Href)
 		}
