@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
+	"task/cmd"
 )
 
 func main() {
-	fmt.Println("CLI Task Manager")
+	cmd.Execute()
 }
