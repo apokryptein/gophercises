@@ -11,6 +11,11 @@ import (
 
 var db *bolt.DB
 
+type Task struct {
+	Id   int
+	Name string
+}
+
 func Init() error {
 	var err error
 	db, err = bolt.Open("tasks.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
@@ -45,23 +50,22 @@ func AddTask(task string) (int, error) {
 	return taskId, nil
 }
 
-func ListTasks() error {
+func ListTasks() ([]Task, error) {
+	var taskList []Task
 	if err := db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("tasks"))
 
-		fmt.Println("You have the following tasks:")
-
 		if err := b.ForEach(func(k, v []byte) error {
-			fmt.Printf("%d. %s", btoi(k), string(v))
+			taskList = append(taskList, Task{Id: btoi(k), Name: string(v)})
 			return nil
 		}); err != nil {
 			return err
 		}
 		return nil
 	}); err != nil {
-		return err
+		return taskList, err
 	}
-	return nil
+	return taskList, nil
 }
 
 // itob returns an 8-byte big endian representation of an int
