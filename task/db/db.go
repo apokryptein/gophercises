@@ -68,6 +68,23 @@ func ListTasks() ([]Task, error) {
 	return taskList, nil
 }
 
+func CompleteTask(id int) (string, error) {
+	var task string
+	if err := db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("tasks"))
+		if b == nil {
+			return fmt.Errorf("task: get bucket failed")
+		}
+
+		task = string(b.Get(itob(id)))
+		return b.Delete(itob(id))
+	}); err != nil {
+		return "", err
+	}
+
+	return task, nil
+}
+
 // itob returns an 8-byte big endian representation of an int
 func itob(v int) []byte {
 	b := make([]byte, 8)
