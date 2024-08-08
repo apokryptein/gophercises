@@ -13,6 +13,8 @@ func init() {
 	rootCmd.AddCommand(doCmd)
 }
 
+// TODO: add ability to "do" multiple tasks
+// e.g. -> task do 1 2 3
 var doCmd = &cobra.Command{
 	Use:   "do",
 	Short: "Mark task as done",

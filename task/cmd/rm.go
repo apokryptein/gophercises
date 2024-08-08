@@ -13,6 +13,8 @@ func init() {
 	rootCmd.AddCommand(rmCmd)
 }
 
+// TODO: add ability to remove multiple tasks
+// e.g. -> task rm 1 2 3
 var rmCmd = &cobra.Command{
 	Use:   "rm",
 	Short: "Remove task from todo list",

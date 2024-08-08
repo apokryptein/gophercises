@@ -17,8 +17,6 @@ type Task struct {
 	Id   int
 }
 
-// TODO: add 'completed' command to list completed tasks
-
 func Init(path string) error {
 	var err error
 	db, err = bolt.Open(path+"tasks.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
