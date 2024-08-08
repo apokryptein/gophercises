@@ -19,9 +19,9 @@ type Task struct {
 // TODO: add 'rm' command to remove task from DB without completing
 // TODO: add 'completed' command to list completed tasks
 
-func Init() error {
+func Init(path string) error {
 	var err error
-	db, err = bolt.Open("tasks.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err = bolt.Open(path+"tasks.db", 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "task: error creating database: %v", err)
 		return err
@@ -72,6 +72,10 @@ func ListTasks() ([]Task, error) {
 }
 
 func CompleteTask(id int) (string, error) {
+	return RemoveTask(id)
+}
+
+func RemoveTask(id int) (string, error) {
 	var task string
 	if err := db.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("tasks"))
