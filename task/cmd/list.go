@@ -23,11 +23,11 @@ var listCmd = &cobra.Command{
 		}
 
 		if len(tasks) == 0 {
-			fmt.Println("You do not have pending todos")
+			fmt.Println("You don't have any pending todos")
 		}
 
-		for _, task := range tasks {
-			fmt.Printf("%d. %s\n", task.Id, task.Name)
+		for i, task := range tasks {
+			fmt.Printf("%d. %s\n", i+1, task.Name)
 		}
 	},
 }

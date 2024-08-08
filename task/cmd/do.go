@@ -23,7 +23,19 @@ var doCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		task, err := db.CompleteTask(id)
+		tasks, err := db.ListTasks()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "task: error retrieving tasks: %v", err)
+			os.Exit(1)
+		}
+
+		if id < 1 || id > len(tasks) {
+			fmt.Fprint(os.Stderr, "task: invalid task ID")
+			os.Exit(1)
+		}
+
+		taskId := tasks[id-1].Id
+		task, err := db.CompleteTask(taskId)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "task: error completing task in DB: %v", err)
 			os.Exit(1)
