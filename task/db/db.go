@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	bolt "go.etcd.io/bbolt"
@@ -12,11 +13,10 @@ import (
 var db *bolt.DB
 
 type Task struct {
-	Id   int
 	Name string
+	Id   int
 }
 
-// TODO: add 'rm' command to remove task from DB without completing
 // TODO: add 'completed' command to list completed tasks
 
 func Init(path string) error {
@@ -28,7 +28,13 @@ func Init(path string) error {
 	}
 
 	return db.Update(func(tx *bolt.Tx) error {
-		_, err := tx.CreateBucketIfNotExists([]byte("tasks"))
+		var err error
+		_, err = tx.CreateBucketIfNotExists([]byte("tasks"))
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.CreateBucketIfNotExists([]byte("completed"))
 		return err
 	})
 }
@@ -55,11 +61,11 @@ func AddTask(task string) (int, error) {
 
 func ListTasks() ([]Task, error) {
 	var taskList []Task
-	if err := db.Update(func(tx *bolt.Tx) error {
+	if err := db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("tasks"))
 
 		if err := b.ForEach(func(k, v []byte) error {
-			taskList = append(taskList, Task{Id: btoi(k), Name: string(v)})
+			taskList = append(taskList, Task{Name: string(v), Id: btoi(k)})
 			return nil
 		}); err != nil {
 			return err
@@ -71,7 +77,33 @@ func ListTasks() ([]Task, error) {
 	return taskList, nil
 }
 
+func ListCompleted() ([]string, error) {
+	date := strings.Split(getDateTime(), " ")[0]
+	var completed []string
+
+	if err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("completed"))
+
+		if err := b.ForEach(func(k, v []byte) error {
+			tDate := strings.Split(string(k), " ")[0]
+			if date == tDate {
+				completed = append(completed, string(v))
+			}
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return completed, nil
+}
+
 func CompleteTask(id int) (string, error) {
+	if err := addToCompleted(id); err != nil {
+		return "", err
+	}
 	return RemoveTask(id)
 }
 
@@ -90,6 +122,41 @@ func RemoveTask(id int) (string, error) {
 	}
 
 	return task, nil
+}
+
+func addToCompleted(id int) error {
+	var compTask string
+	if err := db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("tasks"))
+		if b == nil {
+			return fmt.Errorf("task: get bucket failed")
+		}
+		compTask = string(b.Get(itob(id)))
+		return nil
+	}); err != nil {
+		return err
+	}
+
+	err := db.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("completed"))
+		if b == nil {
+			return fmt.Errorf("task: get bucket failed")
+		}
+
+		date := getDateTime()
+		return b.Put([]byte(date), []byte(compTask))
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func getDateTime() string {
+	t := strings.Split(time.Now().String(), " ")
+	dateTime := t[0:2]
+	return strings.Join(dateTime, " ")
 }
 
 // itob returns an 8-byte big endian representation of an int
