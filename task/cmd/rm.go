@@ -37,7 +37,7 @@ var rmCmd = &cobra.Command{
 		}
 
 		taskId := tasks[id-1].Id
-		task, err := db.CompleteTask(taskId)
+		task, err := db.RemoveTask(taskId)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "task: error removing task in DB: %v", err)
 			os.Exit(1)
