@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -14,12 +15,25 @@ func main() {
 	dataFile := flag.String("d", "", "file containing phone numbers for write to database")
 	flag.Parse()
 
-	populateDb(*dataFile)
+	if isFlagPassed("d") {
+		if err := populateDb(*dataFile); err != nil {
+			fmt.Fprintf(os.Stderr, "phone: error populating database: %v", err)
+			os.Exit(1)
+		}
+	}
+
+	testNum := "(123) 456-7893"
+	fmt.Println(normalizeNumber(testNum))
+}
+
+// normalizes phone number -> ##########
+func normalizeNumber(n string) string {
+	norm := regexp.MustCompile(`[^0-9]+`).ReplaceAllString(n, "")
+	return norm
 }
 
 func populateDb(filename string) error {
-	fmt.Println(filename)
-
+	// DB URL format: postgres://<db-user>:<password>@<ip/host>:<port>/<database-name>
 	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "phone: error opening database connection: %v", err)
@@ -41,6 +55,8 @@ func populateDb(filename string) error {
 		contacts = append(contacts, []any{s.Text()})
 	}
 
+	// Table Name: phone_numbers
+	// Table Columns: id SERIAL PRIMARY KEY, phone_number TEXT
 	_, err = conn.CopyFrom(
 		context.Background(),
 		pgx.Identifier{"phone_numbers"},
@@ -53,4 +69,15 @@ func populateDb(filename string) error {
 	}
 
 	return nil
+}
+
+// Checks if flag was passed
+func isFlagPassed(name string) bool {
+	found := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			found = true
+		}
+	})
+	return found
 }
