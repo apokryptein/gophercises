@@ -11,19 +11,35 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
+type Contact struct {
+	Phone_Number string // named this way to match database column
+	Id           int
+}
+
 func main() {
+	// TODO: add flag to list database rows & related logic
+	// TODO: add flag to normalize numbers & related logic
 	dataFile := flag.String("d", "", "file containing phone numbers for write to database")
 	flag.Parse()
 
+	// DB URL format: postgres://<db-user>:<password>@<ip/host>:<port>/<database-name>
+	dbUrl := os.Getenv("DATABASE_URL")
+
 	if isFlagPassed("d") {
-		if err := populateDb(*dataFile); err != nil {
-			fmt.Fprintf(os.Stderr, "phone: error populating database: %v", err)
+		if err := populateDb(*dataFile, dbUrl); err != nil {
 			os.Exit(1)
 		}
+		return
 	}
 
-	testNum := "(123) 456-7893"
-	fmt.Println(normalizeNumber(testNum))
+	contacts, err := readDb(dbUrl)
+	if err != nil {
+		os.Exit(1)
+	}
+
+	if err = updateDb(dbUrl, contacts); err != nil {
+		os.Exit(1)
+	}
 }
 
 // normalizes phone number -> ##########
@@ -32,9 +48,8 @@ func normalizeNumber(n string) string {
 	return norm
 }
 
-func populateDb(filename string) error {
-	// DB URL format: postgres://<db-user>:<password>@<ip/host>:<port>/<database-name>
-	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+func populateDb(filename string, dbUrl string) error {
+	conn, err := pgx.Connect(context.Background(), dbUrl)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "phone: error opening database connection: %v", err)
 		return err
@@ -64,10 +79,64 @@ func populateDb(filename string) error {
 		pgx.CopyFromRows(contacts),
 	)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "phone: error writing into database: %v", err)
+		fmt.Fprintf(os.Stderr, "phone: error writing into database: %v\n", err)
 		return err
 	}
 
+	fmt.Printf("SUCCESS: Data from %s written to database.\n", filename)
+	return nil
+}
+
+func readDb(dbUrl string) ([]Contact, error) {
+	// TODO: put db connection code in separate function or possibly package for reuse
+	conn, err := pgx.Connect(context.Background(), dbUrl)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "phone: error opening database connection: %v", err)
+		return nil, err
+	}
+	defer conn.Close(context.Background())
+
+	query := `SELECT id, phone_number FROM phone_numbers`
+
+	rows, err := conn.Query(context.Background(), query)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "phone: error reading database: %v\n", err)
+		return nil, err
+	}
+	defer rows.Close()
+
+	contacts, err := pgx.CollectRows(rows, pgx.RowToStructByName[Contact])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "phone: error parsing rows to struct: %v\n", err)
+		return nil, err
+	}
+
+	return contacts, nil
+}
+
+func updateDb(dbUrl string, contacts []Contact) error {
+	conn, err := pgx.Connect(context.Background(), dbUrl)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "phone: error opening database connection: %v\n", err)
+		return err
+	}
+	defer conn.Close(context.Background())
+
+	for _, contact := range contacts {
+		query := `UPDATE phone_numbers SET phone_number = @phone_number WHERE id = @id`
+		args := pgx.NamedArgs{
+			"id":           contact.Id,
+			"phone_number": normalizeNumber(contact.Phone_Number),
+		}
+
+		_, err = conn.Exec(context.Background(), query, args)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "phone: error updating database row: %v\n", err)
+			return err
+		}
+	}
+
+	fmt.Println("SUCCESS: Phone numbers in database have been normalized.")
 	return nil
 }
 
