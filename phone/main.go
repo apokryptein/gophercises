@@ -19,6 +19,7 @@ type Contact struct {
 func main() {
 	// TODO: add flag to list database rows & related logic
 	// TODO: add flag to normalize numbers & related logic
+	// TODO: implement connection pools to avoid creating frequent new connections
 	dataFile := flag.String("d", "", "file containing phone numbers for write to database")
 	flag.Parse()
 
@@ -123,12 +124,16 @@ func updateDb(dbUrl string, contacts []Contact) error {
 	defer conn.Close(context.Background())
 
 	for _, contact := range contacts {
+		normNum := normalizeNumber(contact.Phone_Number)
+		if normNum == contact.Phone_Number {
+			continue
+		}
+
 		query := `UPDATE phone_numbers SET phone_number = @phone_number WHERE id = @id`
 		args := pgx.NamedArgs{
 			"id":           contact.Id,
-			"phone_number": normalizeNumber(contact.Phone_Number),
+			"phone_number": normNum,
 		}
-
 		_, err = conn.Exec(context.Background(), query, args)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "phone: error updating database row: %v\n", err)
