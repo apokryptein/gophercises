@@ -9,7 +9,12 @@ import (
 	"regexp"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type pgdb struct {
+	db *pgxpool.Pool
+}
 
 type Contact struct {
 	Phone_Number string // named this way to match database column
@@ -26,8 +31,10 @@ func main() {
 	// DB URL format: postgres://<db-user>:<password>@<ip/host>:<port>/<database-name>
 	dbUrl := os.Getenv("DATABASE_URL")
 
+	db, _ := NewDB(context.Background(), dbUrl)
+
 	if isFlagPassed("d") {
-		if err := populateDb(*dataFile, dbUrl); err != nil {
+		if err := db.populateDb(*dataFile); err != nil {
 			os.Exit(1)
 		}
 		return
@@ -43,19 +50,28 @@ func main() {
 	}
 }
 
+func NewDB(ctx context.Context, connStr string) (*pgdb, error) {
+	db, err := pgxpool.New(ctx, connStr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error creating new PGX Pool: %v", err)
+		os.Exit(1)
+	}
+	return &pgdb{db}, nil
+}
+
 // normalizes phone number -> ##########
 func normalizeNumber(n string) string {
 	norm := regexp.MustCompile(`[^0-9]+`).ReplaceAllString(n, "")
 	return norm
 }
 
-func populateDb(filename string, dbUrl string) error {
-	conn, err := pgx.Connect(context.Background(), dbUrl)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "phone: error opening database connection: %v", err)
-		return err
-	}
-	defer conn.Close(context.Background())
+func (pg *pgdb) populateDb(filename string) error {
+	//conn, err := pgx.Connect(context.Background(), dbUrl)
+	//if err != nil {
+	//	fmt.Fprintf(os.Stderr, "phone: error opening database connection: %v", err)
+	//	return err
+	//}
+	//defer conn.Close(context.Background())
 
 	f, err := os.Open(filename)
 	if err != nil {
@@ -73,7 +89,7 @@ func populateDb(filename string, dbUrl string) error {
 
 	// Table Name: phone_numbers
 	// Table Columns: id SERIAL PRIMARY KEY, phone_number TEXT
-	_, err = conn.CopyFrom(
+	_, err = pg.db.CopyFrom(
 		context.Background(),
 		pgx.Identifier{"phone_numbers"},
 		[]string{"phone_number"},
