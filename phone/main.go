@@ -24,7 +24,8 @@ type Contact struct {
 func main() {
 	// TODO: add flag to list database rows & related logic
 	// TODO: add flag to normalize numbers & related logic
-	dataFile := flag.String("d", "", "file containing phone numbers for write to database")
+	dataFile := flag.String("d", "", "data file containing phone numbers for write to database")
+	normDb := flag.Bool("n", false, "normalize database phone numbers")
 	flag.Parse()
 
 	// DB URL format: postgres://<db-user>:<password>@<ip/host>:<port>/<database-name>
@@ -44,13 +45,23 @@ func main() {
 		return
 	}
 
-	contacts, err := connPool.ReadDb(dbUrl)
-	if err != nil {
-		os.Exit(1)
-	}
+	if *normDb {
+		contacts, err := connPool.readDb()
+		if err != nil {
+			os.Exit(1)
+		}
 
-	if err = connPool.UpdateDb(contacts); err != nil {
-		os.Exit(1)
+		for _, contact := range contacts {
+			normNum := normalizeNumber(contact.Phone_Number)
+			if normNum == contact.Phone_Number {
+				continue
+			}
+
+			contact.Phone_Number = normNum
+			if err := connPool.UpdateRecord(&contact); err != nil {
+				fmt.Fprintf(os.Stderr, "phone: error updating DB record: %v", err)
+			}
+		}
 	}
 }
 
@@ -100,7 +111,7 @@ func (pg *pgdb) PopulateDb(filename string) error {
 	return nil
 }
 
-func (pg *pgdb) ReadDb(dbUrl string) ([]Contact, error) {
+func (pg *pgdb) readDb() ([]Contact, error) {
 	query := `SELECT id, phone_number FROM phone_numbers`
 
 	rows, err := pg.db.Query(context.Background(), query)
@@ -119,28 +130,21 @@ func (pg *pgdb) ReadDb(dbUrl string) ([]Contact, error) {
 	return contacts, nil
 }
 
-func (pg *pgdb) UpdateDb(contacts []Contact) error {
+func (pg *pgdb) UpdateRecord(contact *Contact) error {
 	var err error
 
-	for _, contact := range contacts {
-		normNum := normalizeNumber(contact.Phone_Number)
-		if normNum == contact.Phone_Number {
-			continue
-		}
-
-		query := `UPDATE phone_numbers SET phone_number = @phone_number WHERE id = @id`
-		args := pgx.NamedArgs{
-			"id":           contact.Id,
-			"phone_number": normNum,
-		}
-		_, err = pg.db.Exec(context.Background(), query, args)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "phone: error updating database row: %v\n", err)
-			return err
-		}
+	query := `UPDATE phone_numbers SET phone_number = @phone_number WHERE id = @id`
+	args := pgx.NamedArgs{
+		"id":           contact.Id,
+		"phone_number": contact.Phone_Number,
+	}
+	_, err = pg.db.Exec(context.Background(), query, args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "phone: error updating database row: %v\n", err)
+		return err
 	}
 
-	fmt.Println("SUCCESS: Phone numbers in database have been normalized.")
+	fmt.Printf("SUCCESS: %s updated.\n", contact.Phone_Number)
 	return nil
 }
 
