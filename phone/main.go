@@ -148,6 +148,19 @@ func (pg *pgdb) UpdateRecord(contact *Contact) error {
 	return nil
 }
 
+func (pg *pgdb) DeleteRecord(id int) error {
+	query := `DELETE FROM phone_numbers WHERE id = @id`
+	args := pgx.NamedArgs{
+		"id": id,
+	}
+
+	_, err := pg.db.Exec(context.Background(), query, args)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // Checks if flag was passed
 func isFlagPassed(name string) bool {
 	found := false
