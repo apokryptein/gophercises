@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"database/sql"
 	"flag"
 	"fmt"
 	"os"
@@ -128,6 +129,31 @@ func (pg *pgdb) readDb() ([]Contact, error) {
 	}
 
 	return contacts, nil
+}
+
+func (pg *pgdb) LocateRecord(number string) (*Contact, error) {
+	var c Contact
+
+	query := `SELECT * FROM phone_numbers WHERE phone_number = @phone_number`
+	args := pgx.NamedArgs{
+		"phone_number": number,
+	}
+
+	rows, err := pg.db.Query(context.Background(), query, args)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	rows.Next()
+	if err := rows.Scan(&c.Id, &c.Phone_Number); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		} else {
+			return nil, err
+		}
+	}
+	return &c, nil
 }
 
 func (pg *pgdb) UpdateRecord(contact *Contact) error {
