@@ -24,28 +24,32 @@ type Contact struct {
 func main() {
 	// TODO: add flag to list database rows & related logic
 	// TODO: add flag to normalize numbers & related logic
-	// TODO: implement connection pools to avoid creating frequent new connections
 	dataFile := flag.String("d", "", "file containing phone numbers for write to database")
 	flag.Parse()
 
 	// DB URL format: postgres://<db-user>:<password>@<ip/host>:<port>/<database-name>
 	dbUrl := os.Getenv("DATABASE_URL")
 
-	db, _ := NewDB(context.Background(), dbUrl)
+	connPool, err := NewDB(context.Background(), dbUrl)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error creating new PGX Pool: %v", err)
+		os.Exit(1)
+	}
+	defer connPool.db.Close()
 
 	if isFlagPassed("d") {
-		if err := db.populateDb(*dataFile); err != nil {
+		if err := connPool.PopulateDb(*dataFile); err != nil {
 			os.Exit(1)
 		}
 		return
 	}
 
-	contacts, err := readDb(dbUrl)
+	contacts, err := connPool.ReadDb(dbUrl)
 	if err != nil {
 		os.Exit(1)
 	}
 
-	if err = updateDb(dbUrl, contacts); err != nil {
+	if err = connPool.UpdateDb(contacts); err != nil {
 		os.Exit(1)
 	}
 }
@@ -53,8 +57,7 @@ func main() {
 func NewDB(ctx context.Context, connStr string) (*pgdb, error) {
 	db, err := pgxpool.New(ctx, connStr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error creating new PGX Pool: %v", err)
-		os.Exit(1)
+		return nil, err
 	}
 	return &pgdb{db}, nil
 }
@@ -65,14 +68,7 @@ func normalizeNumber(n string) string {
 	return norm
 }
 
-func (pg *pgdb) populateDb(filename string) error {
-	//conn, err := pgx.Connect(context.Background(), dbUrl)
-	//if err != nil {
-	//	fmt.Fprintf(os.Stderr, "phone: error opening database connection: %v", err)
-	//	return err
-	//}
-	//defer conn.Close(context.Background())
-
+func (pg *pgdb) PopulateDb(filename string) error {
 	f, err := os.Open(filename)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "phone: error opening file for read: %v", err)
@@ -104,18 +100,10 @@ func (pg *pgdb) populateDb(filename string) error {
 	return nil
 }
 
-func readDb(dbUrl string) ([]Contact, error) {
-	// TODO: put db connection code in separate function or possibly package for reuse
-	conn, err := pgx.Connect(context.Background(), dbUrl)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "phone: error opening database connection: %v", err)
-		return nil, err
-	}
-	defer conn.Close(context.Background())
-
+func (pg *pgdb) ReadDb(dbUrl string) ([]Contact, error) {
 	query := `SELECT id, phone_number FROM phone_numbers`
 
-	rows, err := conn.Query(context.Background(), query)
+	rows, err := pg.db.Query(context.Background(), query)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "phone: error reading database: %v\n", err)
 		return nil, err
@@ -131,13 +119,8 @@ func readDb(dbUrl string) ([]Contact, error) {
 	return contacts, nil
 }
 
-func updateDb(dbUrl string, contacts []Contact) error {
-	conn, err := pgx.Connect(context.Background(), dbUrl)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "phone: error opening database connection: %v\n", err)
-		return err
-	}
-	defer conn.Close(context.Background())
+func (pg *pgdb) UpdateDb(contacts []Contact) error {
+	var err error
 
 	for _, contact := range contacts {
 		normNum := normalizeNumber(contact.Phone_Number)
@@ -150,7 +133,7 @@ func updateDb(dbUrl string, contacts []Contact) error {
 			"id":           contact.Id,
 			"phone_number": normNum,
 		}
-		_, err = conn.Exec(context.Background(), query, args)
+		_, err = pg.db.Exec(context.Background(), query, args)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "phone: error updating database row: %v\n", err)
 			return err
