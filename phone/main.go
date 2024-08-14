@@ -69,7 +69,7 @@ func main() {
 
 				// If duplicate found, delete
 				if lookup != nil {
-					if err := connPool.DeleteRecord(lookup.Id); err != nil {
+					if err := connPool.DeleteRecord(contact.Id); err != nil {
 						fmt.Fprintf(os.Stderr, "phone: error deleting record: %v", err)
 						os.Exit(1)
 					}
