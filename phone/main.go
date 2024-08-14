@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jedib0t/go-pretty/table"
 )
 
 type pgdb struct {
@@ -22,12 +23,11 @@ type Contact struct {
 }
 
 func main() {
-	// TODO: add flag to list database rows & related logic
-	// TODO: add function to reset database
 	// TODO: Refactor to external library
 	dataFile := flag.String("d", "", "data file containing phone numbers for write to database")
 	normDb := flag.Bool("n", false, "normalize database phone numbers")
 	resetDb := flag.Bool("r", false, "reset phone_numbers table")
+	printData := flag.Bool("p", false, "print table data")
 	flag.Parse()
 
 	// DB URL format: postgres://<db-user>:<password>@<ip/host>:<port>/<database-name>
@@ -43,6 +43,15 @@ func main() {
 	// Populate database with phone numbers from file
 	if isFlagPassed("d") {
 		if err := connPool.PopulateDb(*dataFile); err != nil {
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Print table dataFile
+	if *printData {
+		if err := connPool.PrintData(); err != nil {
+			fmt.Fprintf(os.Stderr, "phone: error printing table: %v", err)
 			os.Exit(1)
 		}
 		return
@@ -163,6 +172,23 @@ func (pg *pgdb) readDb() ([]Contact, error) {
 	}
 
 	return contacts, nil
+}
+
+func (pg *pgdb) PrintData() error {
+	contacts, err := pg.readDb()
+	if err != nil {
+		return err
+	}
+
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"ID", "Phone Number"})
+	for _, contact := range contacts {
+		t.AppendRow(table.Row{contact.Id, contact.Phone_Number})
+	}
+	t.Render()
+
+	return nil
 }
 
 func (pg *pgdb) LocateRecord(number string) (*Contact, error) {
