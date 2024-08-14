@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"context"
-	"database/sql"
 	"flag"
 	"fmt"
 	"os"
@@ -24,7 +23,8 @@ type Contact struct {
 
 func main() {
 	// TODO: add flag to list database rows & related logic
-	// TODO: add flag to normalize numbers & related logic
+	// TODO: add function to reset database
+	// TODO: Refactor to external library
 	dataFile := flag.String("d", "", "data file containing phone numbers for write to database")
 	normDb := flag.Bool("n", false, "normalize database phone numbers")
 	flag.Parse()
@@ -46,21 +46,43 @@ func main() {
 		return
 	}
 
+	// Normalize Phone Numbers per normDb flag
 	if *normDb {
+		// Read DB into []Contact
 		contacts, err := connPool.readDb()
 		if err != nil {
 			os.Exit(1)
 		}
 
+		// Iterate through records to find numbers requiring normalization
 		for _, contact := range contacts {
 			normNum := normalizeNumber(contact.Phone_Number)
-			if normNum == contact.Phone_Number {
-				continue
-			}
 
-			contact.Phone_Number = normNum
-			if err := connPool.UpdateRecord(&contact); err != nil {
-				fmt.Fprintf(os.Stderr, "phone: error updating DB record: %v", err)
+			// If normaliation is required
+			if normNum != contact.Phone_Number {
+				// Locate relevant record to find other records with the same normalized number
+				lookup, err := connPool.LocateRecord(normNum)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "phone: error locating record: %v", err)
+					os.Exit(1)
+				}
+
+				// If duplicate found, delete
+				if lookup != nil {
+					if err := connPool.DeleteRecord(lookup.Id); err != nil {
+						fmt.Fprintf(os.Stderr, "phone: error deleting record: %v", err)
+						os.Exit(1)
+					}
+					fmt.Printf("Duplicate found. Deleting record: %d:%s\n", lookup.Id, lookup.Phone_Number)
+					continue
+				}
+
+				// If no duplicate found, update record
+				contact.Phone_Number = normNum
+				if err := connPool.UpdateRecord(&contact); err != nil {
+					fmt.Fprintf(os.Stderr, "phone: error updating DB record: %v", err)
+				}
+				continue
 			}
 		}
 	}
@@ -132,7 +154,7 @@ func (pg *pgdb) readDb() ([]Contact, error) {
 }
 
 func (pg *pgdb) LocateRecord(number string) (*Contact, error) {
-	var c Contact
+	// var c Contact
 
 	query := `SELECT * FROM phone_numbers WHERE phone_number = @phone_number`
 	args := pgx.NamedArgs{
@@ -145,15 +167,16 @@ func (pg *pgdb) LocateRecord(number string) (*Contact, error) {
 	}
 	defer rows.Close()
 
-	rows.Next()
-	if err := rows.Scan(&c.Id, &c.Phone_Number); err != nil {
-		if err == sql.ErrNoRows {
-			return nil, nil
-		} else {
-			return nil, err
-		}
+	contacts, err := pgx.CollectRows(rows, pgx.RowToStructByName[Contact])
+	if err != nil {
+		return nil, err
 	}
-	return &c, nil
+
+	if len(contacts) == 0 {
+		return nil, nil
+	}
+
+	return &contacts[0], nil
 }
 
 func (pg *pgdb) UpdateRecord(contact *Contact) error {
