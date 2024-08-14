@@ -27,6 +27,7 @@ func main() {
 	// TODO: Refactor to external library
 	dataFile := flag.String("d", "", "data file containing phone numbers for write to database")
 	normDb := flag.Bool("n", false, "normalize database phone numbers")
+	resetDb := flag.Bool("r", false, "reset phone_numbers table")
 	flag.Parse()
 
 	// DB URL format: postgres://<db-user>:<password>@<ip/host>:<port>/<database-name>
@@ -39,10 +40,21 @@ func main() {
 	}
 	defer connPool.db.Close()
 
+	// Populate database with phone numbers from file
 	if isFlagPassed("d") {
 		if err := connPool.PopulateDb(*dataFile); err != nil {
 			os.Exit(1)
 		}
+		return
+	}
+
+	// Reset phone_numbers table
+	if *resetDb {
+		if err := connPool.ResetDatabase(); err != nil {
+			fmt.Fprintf(os.Stderr, "phone: error reseting database: %v", err)
+			os.Exit(1)
+		}
+		fmt.Println("SUCCESS: database reset")
 		return
 	}
 
@@ -73,7 +85,7 @@ func main() {
 						fmt.Fprintf(os.Stderr, "phone: error deleting record: %v", err)
 						os.Exit(1)
 					}
-					fmt.Printf("Duplicate found. Deleting record: %d:%s\n", lookup.Id, lookup.Phone_Number)
+					fmt.Printf("DUPLICATE: Deleting record: %d:%s\n", lookup.Id, lookup.Phone_Number)
 					continue
 				}
 
@@ -208,6 +220,21 @@ func (pg *pgdb) DeleteRecord(id int) error {
 		return err
 	}
 	return nil
+}
+
+func (pg *pgdb) ResetDatabase() error {
+	batch := &pgx.Batch{}
+	batch.Queue("TRUNCATE phone_numbers")
+	batch.Queue("ALTER SEQUENCE phone_numbers_id_seq RESTART")
+
+	br := pg.db.SendBatch(context.Background(), batch)
+
+	_, err := br.Exec()
+	if err != nil {
+		return err
+	}
+
+	return br.Close()
 }
 
 // Checks if flag was passed
