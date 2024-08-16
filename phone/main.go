@@ -1,29 +1,16 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"flag"
 	"fmt"
 	"os"
 	"regexp"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jedib0t/go-pretty/table"
+	"github.com/apokryptein/gophercises/phone/phonedb"
 )
 
-type pgdb struct {
-	db *pgxpool.Pool
-}
-
-type Contact struct {
-	Phone_Number string // named this way to match database column
-	Id           int
-}
-
 func main() {
-	// TODO: Refactor to external library
 	dataFile := flag.String("d", "", "data file containing phone numbers for write to database")
 	normDb := flag.Bool("n", false, "normalize database phone numbers")
 	resetDb := flag.Bool("r", false, "reset phone_numbers table")
@@ -33,12 +20,12 @@ func main() {
 	// DB URL format: postgres://<db-user>:<password>@<ip/host>:<port>/<database-name>
 	dbUrl := os.Getenv("DATABASE_URL")
 
-	connPool, err := NewDB(context.Background(), dbUrl)
+	connPool, err := phonedb.NewDB(context.Background(), dbUrl)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error creating new PGX Pool: %v", err)
 		os.Exit(1)
 	}
-	defer connPool.db.Close()
+	defer connPool.Db.Close()
 
 	// Populate database with phone numbers from file
 	if isFlagPassed("d") {
@@ -70,7 +57,7 @@ func main() {
 	// Normalize Phone Numbers per normDb flag
 	if *normDb {
 		// Read DB into []Contact
-		contacts, err := connPool.readDb()
+		contacts, err := connPool.ReadDb()
 		if err != nil {
 			os.Exit(1)
 		}
@@ -109,158 +96,10 @@ func main() {
 	}
 }
 
-func NewDB(ctx context.Context, connStr string) (*pgdb, error) {
-	db, err := pgxpool.New(ctx, connStr)
-	if err != nil {
-		return nil, err
-	}
-	return &pgdb{db}, nil
-}
-
 // normalizes phone number -> ##########
 func normalizeNumber(n string) string {
 	norm := regexp.MustCompile(`[^0-9]+`).ReplaceAllString(n, "")
 	return norm
-}
-
-func (pg *pgdb) PopulateDb(filename string) error {
-	f, err := os.Open(filename)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "phone: error opening file for read: %v", err)
-		return err
-	}
-	defer f.Close()
-
-	contacts := [][]any{}
-
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		contacts = append(contacts, []any{s.Text()})
-	}
-
-	// Table Name: phone_numbers
-	// Table Columns: id SERIAL PRIMARY KEY, phone_number TEXT
-	_, err = pg.db.CopyFrom(
-		context.Background(),
-		pgx.Identifier{"phone_numbers"},
-		[]string{"phone_number"},
-		pgx.CopyFromRows(contacts),
-	)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "phone: error writing into database: %v\n", err)
-		return err
-	}
-
-	fmt.Printf("SUCCESS: Data from %s written to database.\n", filename)
-	return nil
-}
-
-func (pg *pgdb) readDb() ([]Contact, error) {
-	query := `SELECT id, phone_number FROM phone_numbers`
-
-	rows, err := pg.db.Query(context.Background(), query)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "phone: error reading database: %v\n", err)
-		return nil, err
-	}
-	defer rows.Close()
-
-	contacts, err := pgx.CollectRows(rows, pgx.RowToStructByName[Contact])
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "phone: error parsing rows to struct: %v\n", err)
-		return nil, err
-	}
-
-	return contacts, nil
-}
-
-func (pg *pgdb) PrintData() error {
-	contacts, err := pg.readDb()
-	if err != nil {
-		return err
-	}
-
-	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"ID", "Phone Number"})
-	for _, contact := range contacts {
-		t.AppendRow(table.Row{contact.Id, contact.Phone_Number})
-	}
-	t.Render()
-
-	return nil
-}
-
-func (pg *pgdb) LocateRecord(number string) (*Contact, error) {
-	// var c Contact
-
-	query := `SELECT * FROM phone_numbers WHERE phone_number = @phone_number`
-	args := pgx.NamedArgs{
-		"phone_number": number,
-	}
-
-	rows, err := pg.db.Query(context.Background(), query, args)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	contacts, err := pgx.CollectRows(rows, pgx.RowToStructByName[Contact])
-	if err != nil {
-		return nil, err
-	}
-
-	if len(contacts) == 0 {
-		return nil, nil
-	}
-
-	return &contacts[0], nil
-}
-
-func (pg *pgdb) UpdateRecord(contact *Contact) error {
-	var err error
-
-	query := `UPDATE phone_numbers SET phone_number = @phone_number WHERE id = @id`
-	args := pgx.NamedArgs{
-		"id":           contact.Id,
-		"phone_number": contact.Phone_Number,
-	}
-	_, err = pg.db.Exec(context.Background(), query, args)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "phone: error updating database row: %v\n", err)
-		return err
-	}
-
-	fmt.Printf("SUCCESS: %s updated.\n", contact.Phone_Number)
-	return nil
-}
-
-func (pg *pgdb) DeleteRecord(id int) error {
-	query := `DELETE FROM phone_numbers WHERE id = @id`
-	args := pgx.NamedArgs{
-		"id": id,
-	}
-
-	_, err := pg.db.Exec(context.Background(), query, args)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (pg *pgdb) ResetDatabase() error {
-	batch := &pgx.Batch{}
-	batch.Queue("TRUNCATE phone_numbers")
-	batch.Queue("ALTER SEQUENCE phone_numbers_id_seq RESTART")
-
-	br := pg.db.SendBatch(context.Background(), batch)
-
-	_, err := br.Exec()
-	if err != nil {
-		return err
-	}
-
-	return br.Close()
 }
 
 // Checks if flag was passed
