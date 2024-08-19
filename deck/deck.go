@@ -39,6 +39,8 @@ func (d Deck) Shuffle() {
 	}
 }
 
+// TODO: maybe implement this function as a Card to String
+// in stead of entire deck to string
 func (d Deck) String() string {
 	var deck []string
 	for _, card := range d {
