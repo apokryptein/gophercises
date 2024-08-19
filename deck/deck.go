@@ -1,5 +1,4 @@
 //go:generate stringer -type=Suit,Rank
-
 package deck
 
 import (
@@ -15,9 +14,10 @@ type Card struct {
 }
 
 type (
-	Deck []Card
-	Suit uint8
-	Rank uint8
+	Option func(Deck) Deck
+	Deck   []Card
+	Suit   uint8
+	Rank   uint8
 )
 
 const (
@@ -25,6 +25,7 @@ const (
 	Diamonds
 	Clubs
 	Hearts
+	Joker
 )
 
 const (
@@ -44,13 +45,17 @@ const (
 	King
 )
 
-func New() *Deck {
+func New(opts ...Option) *Deck {
 	var deck Deck
 
 	for i := Spade; i <= Hearts; i++ {
 		for j := Ace; j <= King; j++ {
-			deck = append(deck, Card{j, i})
+			deck = append(deck, Card{Rank: j, Suit: i})
 		}
+	}
+
+	for _, opt := range opts {
+		deck = opt(deck)
 	}
 
 	return &deck
@@ -76,4 +81,13 @@ func (d Deck) String() string {
 	}
 
 	return strings.Join(deck, ", ")
+}
+
+func WithJokers(n int) func(Deck) Deck {
+	return func(d Deck) Deck {
+		for i := 0; i < n; i++ {
+			d = append(d, Card{Rank: Rank(i + 1), Suit: Joker})
+		}
+		return d
+	}
 }

@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	deck := deck.New()
-	deck.Shuffle()
+	deck := deck.New(deck.WithJokers(2))
+	// deck.Shuffle()
 	fmt.Println(deck.String())
 }
