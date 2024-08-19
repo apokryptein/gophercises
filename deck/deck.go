@@ -1,3 +1,5 @@
+//go:generate stringer -type=Suit,Rank
+
 package deck
 
 import (
@@ -8,25 +10,53 @@ import (
 )
 
 type Card struct {
-	Value string
-	Suit  string
+	Rank
+	Suit
 }
 
-type Deck []Card
+type (
+	Deck []Card
+	Suit uint8
+	Rank uint8
+)
 
-func New() Deck {
-	suits := []string{"Spades", "Diamonds", "Clubs", "Hearts"}
-	values := []string{"Ace", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King"}
+const (
+	Spade Suit = iota
+	Diamonds
+	Clubs
+	Hearts
+)
+
+const (
+	_ Rank = iota
+	Ace
+	Two
+	Three
+	Four
+	Five
+	Six
+	Seven
+	Eight
+	Nine
+	Ten
+	Jack
+	Queen
+	King
+)
+
+func New() *Deck {
+	// suits := []string{"Spades", "Diamonds", "Clubs", "Hearts"}
+	// values := []string{"Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King"}
 
 	var deck Deck
 
-	for _, suit := range suits {
-		for _, val := range values {
-			deck = append(deck, Card{val, suit})
+	for i := Spade; i <= Hearts; i++ {
+		for j := Ace; j <= King; j++ {
+			deck = append(deck, Card{j, i})
 		}
 	}
 
-	return deck
+	return &deck
 }
 
 func (d Deck) Shuffle() {
@@ -44,7 +74,7 @@ func (d Deck) Shuffle() {
 func (d Deck) String() string {
 	var deck []string
 	for _, card := range d {
-		c := fmt.Sprintf("%s of %s", card.Value, card.Suit)
+		c := fmt.Sprintf("%s of %s", card.Rank.String(), card.Suit.String())
 		deck = append(deck, c)
 	}
 
