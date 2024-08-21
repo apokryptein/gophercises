@@ -1,9 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"strings"
-
 	"github.com/apokryptein/gophercises/deck"
 )
 
@@ -12,5 +9,5 @@ func main() {
 		deck.WithJokers(2),
 		deck.WithoutCard(deck.Card{Rank: 2, Suit: 0}))
 
-	fmt.Println(strings.ReplaceAll(deck.String(), ", ", "\n"))
+	deck.PrintDeck()
 }

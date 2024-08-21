@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/rand"
 	"slices"
-	"strings"
 	"time"
 )
 
@@ -72,16 +71,14 @@ func (d Deck) Shuffle() {
 	}
 }
 
-// TODO: implement this function as a Card to String
-// in stead of entire deck to string
-func (d Deck) String() string {
-	var deck []string
-	for _, card := range d {
-		c := fmt.Sprintf("%s of %s", card.Rank.String(), card.Suit.String())
-		deck = append(deck, c)
-	}
+func (c Card) String() string {
+	return fmt.Sprintf("%s of %s", c.Rank.String(), c.Suit.String())
+}
 
-	return strings.Join(deck, ", ")
+func (d Deck) PrintDeck() {
+	for _, card := range d {
+		fmt.Println(card.String())
+	}
 }
 
 func WithJokers(n int) func(Deck) Deck {
