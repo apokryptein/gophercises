@@ -45,6 +45,9 @@ const (
 	King
 )
 
+// Returns a new deck
+// Takes functional options as arguments to modify
+// new decks
 func New(opts ...Option) *Deck {
 	var deck Deck
 
@@ -61,6 +64,8 @@ func New(opts ...Option) *Deck {
 	return &deck
 }
 
+// Shuffles cards in a deck using a random seed
+// and positional shifting
 func (d Deck) Shuffle() {
 	source := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(source)
@@ -71,16 +76,20 @@ func (d Deck) Shuffle() {
 	}
 }
 
+// Returns a string containing a card's Rank and Suit
 func (c Card) String() string {
 	return fmt.Sprintf("%s of %s", c.Rank.String(), c.Suit.String())
 }
 
+// Prints each card in a deck, line by line
 func (d Deck) PrintDeck() {
 	for _, card := range d {
 		fmt.Println(card.String())
 	}
 }
 
+// Functional option for New() function
+// Adds n number of jokers to a deck
 func WithJokers(n int) func(Deck) Deck {
 	return func(d Deck) Deck {
 		for i := 0; i < n; i++ {
@@ -90,6 +99,8 @@ func WithJokers(n int) func(Deck) Deck {
 	}
 }
 
+// Functional option for New() function
+// Filters cards from deck
 func WithoutCard(card Card) func(Deck) Deck {
 	var newDeck Deck
 	return func(d Deck) Deck {
@@ -100,6 +111,8 @@ func WithoutCard(card Card) func(Deck) Deck {
 	}
 }
 
+// Functional option for New() function
+// Provides ability to constuct a deck with multiple decks
 func WithMultipleDecks(n int) func(Deck) Deck {
 	return func(d Deck) Deck {
 		var newDeck Deck
