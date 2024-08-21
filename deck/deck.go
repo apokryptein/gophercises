@@ -4,6 +4,7 @@ package deck
 import (
 	"fmt"
 	"math/rand"
+	"slices"
 	"strings"
 	"time"
 )
@@ -21,7 +22,7 @@ type (
 )
 
 const (
-	Spade Suit = iota
+	Spades Suit = iota
 	Diamonds
 	Clubs
 	Hearts
@@ -48,7 +49,7 @@ const (
 func New(opts ...Option) *Deck {
 	var deck Deck
 
-	for i := Spade; i <= Hearts; i++ {
+	for i := Spades; i <= Hearts; i++ {
 		for j := Ace; j <= King; j++ {
 			deck = append(deck, Card{Rank: j, Suit: i})
 		}
@@ -71,7 +72,7 @@ func (d Deck) Shuffle() {
 	}
 }
 
-// TODO: maybe implement this function as a Card to String
+// TODO: implement this function as a Card to String
 // in stead of entire deck to string
 func (d Deck) String() string {
 	var deck []string
@@ -89,5 +90,15 @@ func WithJokers(n int) func(Deck) Deck {
 			d = append(d, Card{Rank: Rank(i + 1), Suit: Joker})
 		}
 		return d
+	}
+}
+
+func WithoutCard(card Card) func(Deck) Deck {
+	var newDeck Deck
+	return func(d Deck) Deck {
+		newDeck = slices.DeleteFunc(d, func(c Card) bool {
+			return c.Rank == card.Rank
+		})
+		return newDeck
 	}
 }
