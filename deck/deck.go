@@ -87,7 +87,7 @@ func (d Deck) String() string {
 func WithJokers(n int) func(Deck) Deck {
 	return func(d Deck) Deck {
 		for i := 0; i < n; i++ {
-			d = append(d, Card{Rank: Rank(i + 1), Suit: Joker})
+			d = append(d, Card{Rank: 0, Suit: Joker})
 		}
 		return d
 	}
@@ -99,6 +99,17 @@ func WithoutCard(card Card) func(Deck) Deck {
 		newDeck = slices.DeleteFunc(d, func(c Card) bool {
 			return c.Rank == card.Rank
 		})
+		return newDeck
+	}
+}
+
+func WithMultipleDecks(n int) func(Deck) Deck {
+	return func(d Deck) Deck {
+		var newDeck Deck
+		deck := New()
+		for i := 0; i < n; i++ {
+			newDeck = append(newDeck, *deck...)
+		}
 		return newDeck
 	}
 }
