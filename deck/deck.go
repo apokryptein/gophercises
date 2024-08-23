@@ -82,9 +82,11 @@ func (d Deck) Shuffle() {
 // TODO: add ability to accept custom sorting function
 func (d Deck) Sort() Deck {
 	slices.SortFunc(d, func(a, b Card) int {
+		// Check if suits differ
 		if n := cmp.Compare(a.Suit, b.Suit); n != 0 {
 			return n
 		}
+		// If suit is the same, compare ranks
 		return cmp.Compare(a.Rank, b.Rank)
 	})
 	return d
