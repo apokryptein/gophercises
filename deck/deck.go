@@ -84,7 +84,7 @@ func (c Card) String() string {
 // Prints each card in a deck, line by line
 func (d Deck) PrintDeck() {
 	for _, card := range d {
-		fmt.Println(card.String())
+		fmt.Println(card)
 	}
 }
 

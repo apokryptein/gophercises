@@ -1,8 +1,6 @@
 package main
 
-import (
-	"github.com/apokryptein/gophercises/deck"
-)
+import "github.com/apokryptein/gophercises/deck"
 
 func main() {
 	deck := deck.New(deck.WithMultipleDecks(2),
