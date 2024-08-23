@@ -116,9 +116,8 @@ func WithoutCard(card Card) func(Deck) Deck {
 func WithMultipleDecks(n int) func(Deck) Deck {
 	return func(d Deck) Deck {
 		var newDeck Deck
-		deck := New()
 		for i := 0; i < n; i++ {
-			newDeck = append(newDeck, *deck...)
+			newDeck = append(newDeck, d...)
 		}
 		return newDeck
 	}
