@@ -2,6 +2,7 @@
 package deck
 
 import (
+	"cmp"
 	"fmt"
 	"math/rand"
 	"slices"
@@ -74,6 +75,19 @@ func (d Deck) Shuffle() {
 		newPos := r.Intn(len(d) - 1)
 		d[i], d[newPos] = d[newPos], d[i]
 	}
+}
+
+// Sorts deck into default ordering:
+// A-K; Spades, Diamons, Clubs, Hearts
+// TODO: add ability to accept custom sorting function
+func (d Deck) Sort() Deck {
+	slices.SortFunc(d, func(a, b Card) int {
+		if n := cmp.Compare(a.Suit, b.Suit); n != 0 {
+			return n
+		}
+		return cmp.Compare(a.Rank, b.Rank)
+	})
+	return d
 }
 
 // Returns a string containing a card's Rank and Suit
