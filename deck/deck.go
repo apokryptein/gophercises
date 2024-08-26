@@ -67,7 +67,7 @@ func New(opts ...Option) *Deck {
 
 // Shuffles cards in a deck using a random seed
 // and positional shifting
-func (d Deck) Shuffle() {
+func Shuffle(d Deck) Deck {
 	source := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(source)
 
@@ -75,6 +75,7 @@ func (d Deck) Shuffle() {
 		newPos := r.Intn(len(d) - 1)
 		d[i], d[newPos] = d[newPos], d[i]
 	}
+	return d
 }
 
 // Sorts deck into default ordering:
