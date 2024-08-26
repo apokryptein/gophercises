@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"slices"
 
-	deck "github.com/apokryptein/gophercises/deck"
+	"github.com/apokryptein/gophercises/deck"
 )
 
 type Player struct {
@@ -16,14 +16,14 @@ type Player struct {
 func main() {
 	fmt.Println("Welcome to the BlackJack Game")
 
-	deck := deck.New()
+	d := deck.New()
 
 	p1 := Player{
 		Name:   "Player 1",
 		Dealer: false,
 	}
 
-	p1.Hand = Deal(2, deck)
+	p1.Hand = Deal(2, d)
 
 	p1.PrintHand()
 }
