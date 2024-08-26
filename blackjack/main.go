@@ -96,7 +96,7 @@ func (p *Player) TurnRepl(d *deck.Deck) {
 			fmt.Println("You busted.")
 			return
 		}
-
+		// TODO: show dealer's hand here to aid in decision making
 		fmt.Printf("Would you like to Hit (h) or Stand (s)? ")
 
 		scanner := bufio.NewScanner(os.Stdin)
@@ -129,13 +129,27 @@ func Deal(n int, d *deck.Deck) []deck.Card {
 	return cards
 }
 
+// Calculates score of hand
 func (p *Player) ScoreHand() {
-	// TODO: add case for Ace
-	score := 0
-	for _, c := range p.Hand {
-		score += int(cardVal(c))
+	minScore := MinScore(p)
+
+	// if min score is greater than one
+	// we cannot count Aces as having a value of 11
+	if minScore > 11 {
+		p.Score = minScore
+		return
 	}
-	p.Score = score
+
+	// Check for Aces
+	// if minScore is less than 11 and an Ace
+	// is present, add 10 to score
+	for _, card := range p.Hand {
+		if card.Rank == deck.Ace {
+			p.Score = minScore + 10
+			return
+		}
+	}
+	p.Score = minScore
 }
 
 func cardVal(c deck.Card) int {
@@ -143,6 +157,16 @@ func cardVal(c deck.Card) int {
 		return 10
 	}
 	return int(c.Rank)
+}
+
+// Calculates the score assuming all Aces
+// have a value of 1
+func MinScore(p *Player) int {
+	score := 0
+	for _, c := range p.Hand {
+		score += int(cardVal(c))
+	}
+	return score
 }
 
 func (p *Player) PrintHand() {
