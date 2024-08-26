@@ -13,46 +13,51 @@ type Player struct {
 	Name   string
 	Hand   []deck.Card
 	Dealer bool
-	Stand  bool
 	Score  int
 }
 
 func main() {
 	fmt.Println("Welcome to the BlackJack Game")
 
-	deck := deck.New(deck.WithMultipleDecks(3))
+	d := deck.New(deck.WithMultipleDecks(3))
 
 	players := []Player{
 		{
 			Name:   "Player 1",
+			Hand:   Deal(2, d),
 			Dealer: false,
-			Hand:   Deal(2, deck),
+			Score:  0,
 		},
 		{
 			Name:   "PLayer 2",
+			Hand:   Deal(2, d),
 			Dealer: false,
-			Hand:   Deal(2, deck),
+			Score:  0,
 		},
 		{
 			Name:   "Dealer",
+			Hand:   Deal(2, d),
 			Dealer: true,
-			Hand:   Deal(2, deck),
+			Score:  0,
 		},
 	}
 
-	GameInit(players, deck)
+	GameInit(players, d)
 	fmt.Println("Results: ", players)
 }
 
 func GameInit(players []Player, d *deck.Deck) {
-	for _, player := range players {
-		player.TurnRepl(d)
+	for idx := range players {
+		players[idx].TurnRepl(d)
 	}
 }
 
 func (p *Player) TurnRepl(d *deck.Deck) {
+	p.ScoreHand()
 	for {
 		p.PrintHand()
+		fmt.Printf("Current Score: %d\n\n", p.Score)
+		// TODO: Add scoring logic here
 
 		fmt.Printf("Would you like to Hit (H) or Stand (S)? ")
 
@@ -69,8 +74,8 @@ func (p *Player) TurnRepl(d *deck.Deck) {
 		switch choice {
 		case "H":
 			p.Hand = slices.Concat(p.Hand, Deal(1, d))
+			p.ScoreHand()
 		case "S":
-			p.Score = 0 // TODO: implement scoring logic/function
 			return
 		default:
 			fmt.Printf("Invalid choice: %v\n", choice)
@@ -84,6 +89,22 @@ func Deal(n int, d *deck.Deck) []deck.Card {
 	_ = slices.Delete(*d, 0, n)
 
 	return cards
+}
+
+func (p *Player) ScoreHand() {
+	// TODO: add case for Ace
+	score := 0
+	for _, c := range p.Hand {
+		score += int(cardVal(c))
+	}
+	p.Score = score
+}
+
+func cardVal(c deck.Card) int {
+	if c.Rank > 10 {
+		return 10
+	}
+	return int(c.Rank)
 }
 
 func (p *Player) PrintHand() {
