@@ -19,7 +19,7 @@ type Player struct {
 func main() {
 	fmt.Println("Welcome to the BlackJack Game")
 
-	d := deck.New(deck.WithMultipleDecks(3))
+	d := deck.New(deck.WithMultipleDecks(3), deck.Shuffle)
 
 	players := []Player{
 		{
@@ -43,11 +43,46 @@ func main() {
 	}
 
 	GameInit(players, d)
-	fmt.Println("Results: ", players)
+
+	dScore := players[2].Score
+
+	fmt.Println("======== RESULTS ========")
+
+	for _, player := range players[0:2] {
+		pScore := player.Score
+
+		switch {
+		case dScore > 21:
+			fmt.Printf("Dealer busted.\n\n")
+			return
+		case pScore == 21:
+			fmt.Printf("%s: BLACKJACK. You win!\n\n", player.Name)
+		case pScore > 21:
+			fmt.Printf("%s: You busted.\n\n", player.Name)
+		case pScore > dScore:
+			fmt.Printf("Deal Score: %d\n%s Score: %d\n", dScore, player.Name, pScore)
+			fmt.Printf("You win!\n\n")
+		case dScore > pScore:
+			fmt.Printf("Deal Score: %d\n%s Score: %d\n", dScore, player.Name, pScore)
+			fmt.Printf("You lose.\n\n")
+		case pScore == dScore:
+			fmt.Printf("Deal Score: %d\n%s Score: %d\n", dScore, player.Name, pScore)
+			fmt.Printf("Draw.\n\n")
+		}
+	}
 }
 
 func GameInit(players []Player, d *deck.Deck) {
 	for idx := range players {
+		if players[idx].Dealer {
+			players[idx].ScoreHand()
+			// TODO: account for soft 17
+			for players[idx].Score <= 16 {
+				players[idx].Hand = slices.Concat(players[idx].Hand, Deal(1, d))
+				players[idx].ScoreHand()
+			}
+			continue
+		}
 		players[idx].TurnRepl(d)
 	}
 }
@@ -57,9 +92,12 @@ func (p *Player) TurnRepl(d *deck.Deck) {
 	for {
 		p.PrintHand()
 		fmt.Printf("Current Score: %d\n\n", p.Score)
-		// TODO: Add scoring logic here
+		if p.Score > 21 {
+			fmt.Println("You busted.")
+			return
+		}
 
-		fmt.Printf("Would you like to Hit (H) or Stand (S)? ")
+		fmt.Printf("Would you like to Hit (h) or Stand (s)? ")
 
 		scanner := bufio.NewScanner(os.Stdin)
 		scanner.Scan()
@@ -72,10 +110,10 @@ func (p *Player) TurnRepl(d *deck.Deck) {
 		choice := scanner.Text()
 
 		switch choice {
-		case "H":
+		case "h":
 			p.Hand = slices.Concat(p.Hand, Deal(1, d))
 			p.ScoreHand()
-		case "S":
+		case "s":
 			return
 		default:
 			fmt.Printf("Invalid choice: %v\n", choice)
