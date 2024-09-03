@@ -16,6 +16,8 @@ type Player struct {
 	Score  int
 }
 
+// TODO: Create game state
+
 func main() {
 	fmt.Println("Welcome to the BlackJack Game")
 
