@@ -22,6 +22,7 @@ func main() {
 	}
 
 	fileRoot := flag.String("r", pwd, "root directory to begin search")
+	flag.Parse()
 
 	var walkResults []FileEntry
 	err = filepath.WalkDir(*fileRoot, func(path string, entry os.DirEntry, err error) error {
