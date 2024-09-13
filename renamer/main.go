@@ -54,7 +54,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Functionality check for now:
 	// Iterate through results and check using regex
 	for _, f := range walkResults {
 		err := renameFile(f, len(walkResults))
@@ -71,6 +70,7 @@ func checkFilename(filename string, rx string) bool {
 	return match
 }
 
+// Parses filename and renames file on OS
 func renameFile(file FileEntry, n int) error {
 	// Gather relevant indexes to parse filename
 	i := strings.LastIndex(file.Info.Name(), "_")
