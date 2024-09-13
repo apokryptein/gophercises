@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
+	"strings"
 )
 
 type FileEntry struct {
@@ -14,8 +16,6 @@ type FileEntry struct {
 }
 
 func main() {
-	fmt.Println("File renaming utility")
-
 	// Get current directory to act as default
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -27,6 +27,8 @@ func main() {
 	fileRoot := flag.String("r", pwd, "root directory to begin search")
 	regexPattern := flag.String("p", ".*_[0-9]{3}\\.[a-zA-Z]{3}$", "regex file matching pattern")
 	flag.Parse()
+
+	// TODO: put WalkDir logic into separate function
 
 	// Walk files/directories from fileRoot
 	// Append files to []FileEntry
@@ -41,7 +43,10 @@ func main() {
 			return err
 		}
 
-		walkResults = append(walkResults, FileEntry{Path: path, Info: info})
+		// Check if filename matches desired regex prior to storing in []FileEntry
+		if checkFilename(info.Name(), *regexPattern) {
+			walkResults = append(walkResults, FileEntry{Path: path, Info: info})
+		}
 		return nil
 	})
 	if err != nil {
@@ -52,9 +57,9 @@ func main() {
 	// Functionality check for now:
 	// Iterate through results and check using regex
 	for _, f := range walkResults {
-		// fmt.Println(f.Path, f.Info.Name())
-		if checkFilename(f.Info.Name(), *regexPattern) {
-			fmt.Println("Match: ", f.Info.Name())
+		err := renameFile(f, len(walkResults))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "renamer: error renaming file: %v", err)
 		}
 	}
 }
@@ -64,4 +69,31 @@ func checkFilename(filename string, rx string) bool {
 	re := regexp.MustCompile(rx)
 	match := re.MatchString(filename)
 	return match
+}
+
+func renameFile(file FileEntry, n int) error {
+	// Gather relevant indexes to parse filename
+	i := strings.LastIndex(file.Info.Name(), "_")
+	iExt := strings.LastIndex(file.Info.Name(), ".")
+
+	// Grab relevant pieces: basename, number, extension
+	fName := file.Info.Name()[:i]
+	fExt := file.Info.Name()[iExt:]
+	fNum, err := strconv.Atoi(file.Info.Name()[i+1 : iExt])
+	if err != nil {
+		return err
+	}
+
+	// Generate new filename: 'basename (# of total).ext'
+	// TODO: make ending more dynamic
+	newFilename := fmt.Sprintf("%s (%d of %d)%s", fName, fNum, n, fExt)
+	fmt.Printf("Renaming '%s' to '%s'\n", file.Info.Name(), newFilename)
+
+	// Grab directory path
+	iPath := strings.LastIndex(file.Path, "/")
+	fPath := file.Path[:iPath+1]
+
+	// Rename file
+	err = os.Rename(fPath+file.Info.Name(), fPath+newFilename)
+	return err
 }
