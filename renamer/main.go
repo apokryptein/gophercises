@@ -28,29 +28,9 @@ func main() {
 	regexPattern := flag.String("p", ".*_[0-9]{3}\\.[a-zA-Z]{3}$", "regex file matching pattern")
 	flag.Parse()
 
-	// TODO: put WalkDir logic into separate function
-
-	// Walk files/directories from fileRoot
-	// Append files to []FileEntry
-	var walkResults []FileEntry
-	err = filepath.WalkDir(*fileRoot, func(path string, entry os.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-
-		// Check if filename matches desired regex prior to storing in []FileEntry
-		if checkFilename(info.Name(), *regexPattern) {
-			walkResults = append(walkResults, FileEntry{Path: path, Info: info})
-		}
-		return nil
-	})
+	walkResults, err := retrieveFiles(fileRoot, regexPattern)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "renamer: error walking directory: %v", err)
+		fmt.Fprintf(os.Stderr, "renamer: error renaming file: %v", err)
 		os.Exit(1)
 	}
 
@@ -85,7 +65,7 @@ func renameFile(file FileEntry, n int) error {
 	}
 
 	// Generate new filename: 'basename (# of total).ext'
-	// TODO: make ending more dynamic
+	// TODO: make ending dynamic -> commmand line option
 	newFilename := fmt.Sprintf("%s (%d of %d)%s", fName, fNum, n, fExt)
 	fmt.Printf("Renaming '%s' to '%s'\n", file.Info.Name(), newFilename)
 
@@ -96,4 +76,29 @@ func renameFile(file FileEntry, n int) error {
 	// Rename file
 	err = os.Rename(fPath+file.Info.Name(), fPath+newFilename)
 	return err
+}
+
+func retrieveFiles(fileRoot *string, regexPattern *string) ([]FileEntry, error) {
+	var walkResults []FileEntry
+	err := filepath.WalkDir(*fileRoot, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		// Check if filename matches desired regex prior to storing in []FileEntry
+		if checkFilename(info.Name(), *regexPattern) {
+			walkResults = append(walkResults, FileEntry{Path: path, Info: info})
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "renamer: error walking directory: %v", err)
+		return nil, err
+	}
+	return walkResults, nil
 }
