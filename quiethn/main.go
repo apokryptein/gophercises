@@ -15,17 +15,16 @@ import (
 
 func main() {
 	// parse flags
-	var port, numStories int
-	flag.IntVar(&port, "port", 3000, "the port to start the web server on")
-	flag.IntVar(&numStories, "num_stories", 30, "the number of top stories to display")
+	port := flag.Int("port", 3000, "the port to start the web server on")
+	numStories := flag.Int("num_stories", 30, "the number of top stories to display")
 	flag.Parse()
 
 	tpl := template.Must(template.ParseFiles("./index.gohtml"))
 
-	http.HandleFunc("/", handler(numStories, tpl))
+	http.HandleFunc("/", handler(*numStories, tpl))
 
 	// Start the server
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), nil))
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", *port), nil))
 }
 
 func handler(numStories int, tpl *template.Template) http.HandlerFunc {
@@ -53,7 +52,7 @@ func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 		}
 		data := templateData{
 			Stories: stories,
-			Time:    time.Now().Sub(start),
+			Time:    time.Since(start),
 		}
 		err = tpl.Execute(w, data)
 		if err != nil {
