@@ -7,11 +7,17 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
 	"github.com/gophercises/quiet_hn/hn"
 )
+
+type result struct {
+	item item
+	err  error
+}
 
 func main() {
 	// parse flags
@@ -30,26 +36,11 @@ func main() {
 func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
-		var client hn.Client
-		ids, err := client.TopItems()
+		stories, err := getStories(numStories)
 		if err != nil {
-			http.Error(w, "Failed to load top stories", http.StatusInternalServerError)
-			return
+			fmt.Fprintf(os.Stderr, "quiethn: error retrieving stories: %v", err)
 		}
-		var stories []item
-		for _, id := range ids {
-			hnItem, err := client.GetItem(id)
-			if err != nil {
-				continue
-			}
-			item := parseHNItem(hnItem)
-			if isStoryLink(item) {
-				stories = append(stories, item)
-				if len(stories) >= numStories {
-					break
-				}
-			}
-		}
+
 		data := templateData{
 			Stories: stories,
 			Time:    time.Since(start),
@@ -60,6 +51,39 @@ func handler(numStories int, tpl *template.Template) http.HandlerFunc {
 			return
 		}
 	})
+}
+
+func getStories(numStories int) ([]item, error) {
+	var client hn.Client
+	ids, err := client.TopItems()
+	if err != nil {
+		return nil, err
+	}
+
+	resChan := make(chan result)
+	var stories []item
+	for _, id := range ids {
+		go func(id int) {
+			hnItem, err := client.GetItem(id)
+			if err != nil {
+				resChan <- result{err: err}
+			}
+			resChan <- result{item: parseHNItem(hnItem)}
+		}(id)
+
+		res := <-resChan
+		if res.err != nil {
+			continue
+		}
+		if isStoryLink(res.item) {
+			stories = append(stories, res.item)
+			if len(stories) >= numStories {
+				break
+			}
+		}
+	}
+
+	return stories, nil
 }
 
 func isStoryLink(item item) bool {
